@@ -14,6 +14,19 @@ static bool posEquals(Pos a, Pos b)
     return a.row == b.row && a.col == b.col;
 }
 
+static bool isBombDanger(const GameState *state, Pos pos)
+{
+    return state->event.activeEvent == EVENT_BOMBARDMENT
+        && state->event.bombActive
+        && Game_isInBombZone(state, pos);
+}
+
+static bool isBombZoneActive(const GameState *state, Pos pos)
+{
+    return state->event.activeEvent == EVENT_BOMBARDMENT
+        && Game_isInBombZone(state, pos);
+}
+
 static bool terrainBlocks(const GameState *state, const Snake *snake, Pos pos)
 {
     CellType cell;
@@ -30,6 +43,11 @@ static bool terrainBlocks(const GameState *state, const Snake *snake, Pos pos)
         return true;
     }
     if (cell == CELL_BATTLE_SPIKE && snake->shieldCharges <= 0) {
+        return true;
+    }
+    /* 炸弹活跃时，轰炸区不可通行 */
+    if (isBombDanger(state, pos)
+        && snake->shieldCharges <= 0 && snake->shieldMs <= 0) {
         return true;
     }
 
@@ -58,6 +76,11 @@ static bool isSafeCandidate(const GameState *state, Direction dir)
 
     next = Common_nextPos(ai->body[0], dir);
     if (terrainBlocks(state, ai, next)) {
+        return false;
+    }
+    /* 轰炸区在炸弹活跃时致命 */
+    if (isBombDanger(state, next)
+        && ai->shieldCharges <= 0 && ai->shieldMs <= 0) {
         return false;
     }
 
@@ -101,17 +124,20 @@ static bool findBestItemByDistance(const GameState *state, Pos from, Pos *target
     for (row = 1; row < mapSize - 1; row++) {
         for (col = 1; col < mapSize - 1; col++) {
             CellType cell = state->cells[row][col];
+            Pos pos; pos.row = row; pos.col = col;
             if (Game_isFood(cell)
                 || cell == CELL_SHIELD
                 || cell == CELL_BATTLE_BOW
                 || cell == CELL_BATTLE_SHIELD
                 || cell == CELL_BATTLE_CLOCK) {
-                Pos pos;
                 int dist;
                 int score;
 
-                pos.row = row;
-                pos.col = col;
+                /* 跳过活跃炸弹区内的物品 */
+                if (isBombDanger(state, pos)) {
+                    continue;
+                }
+
                 dist = Common_manhattan(from, pos);
                 score = itemValueForAi(cell) * 10 - dist * 4;
                 if (!found || score > bestScore) {
@@ -141,9 +167,12 @@ static int floodAreaAfterMove(const GameState *state, Pos start, bool grow)
     for (row = 0; row < mapSize; row++) {
         for (col = 0; col < mapSize; col++) {
             CellType cell = state->cells[row][col];
+            Pos p; p.row = row; p.col = col;
             if (cell == CELL_WALL || cell == CELL_OBSTACLE
                 || (cell == CELL_TRAP && state->ai.shieldMs <= 0)
-                || (cell == CELL_BATTLE_SPIKE && state->ai.shieldCharges <= 0)) {
+                || (cell == CELL_BATTLE_SPIKE && state->ai.shieldCharges <= 0)
+                || (isBombDanger(state, p)
+                    && state->ai.shieldCharges <= 0 && state->ai.shieldMs <= 0)) {
                 visited[row][col] = 1;
             }
         }
@@ -201,9 +230,12 @@ static int bfsDistance(const GameState *state, Pos start, Pos target, bool inclu
     for (row = 0; row < mapSize; row++) {
         for (col = 0; col < mapSize; col++) {
             CellType cell = state->cells[row][col];
+            Pos p; p.row = row; p.col = col;
             if (cell == CELL_WALL || cell == CELL_OBSTACLE
                 || (cell == CELL_TRAP && state->ai.shieldMs <= 0)
-                || (cell == CELL_BATTLE_SPIKE && state->ai.shieldCharges <= 0)) {
+                || (cell == CELL_BATTLE_SPIKE && state->ai.shieldCharges <= 0)
+                || (isBombDanger(state, p)
+                    && state->ai.shieldCharges <= 0 && state->ai.shieldMs <= 0)) {
                 visited[row][col] = 1;
             }
         }
@@ -257,10 +289,13 @@ static Direction bfsFirstStepTo(const GameState *state, Pos start, Pos target)
     for (row = 0; row < mapSize; row++) {
         for (col = 0; col < mapSize; col++) {
             CellType cell = state->cells[row][col];
+            Pos p; p.row = row; p.col = col;
             firstStep[row][col] = DIR_NONE;
             if (cell == CELL_WALL || cell == CELL_OBSTACLE
                 || (cell == CELL_TRAP && state->ai.shieldMs <= 0)
-                || (cell == CELL_BATTLE_SPIKE && state->ai.shieldCharges <= 0)) {
+                || (cell == CELL_BATTLE_SPIKE && state->ai.shieldCharges <= 0)
+                || (isBombDanger(state, p)
+                    && state->ai.shieldCharges <= 0 && state->ai.shieldMs <= 0)) {
                 visited[row][col] = 1;
             }
         }
@@ -407,6 +442,11 @@ static int countPlayerLegalMovesAfterAiStep(const GameState *state, Pos aiNext)
             || (cell == CELL_BATTLE_SPIKE && player->shieldCharges <= 0)) {
             continue;
         }
+        /* 活跃炸弹区也阻断玩家 */
+        if (isBombDanger(state, next)
+            && player->shieldCharges <= 0 && player->shieldMs <= 0) {
+            continue;
+        }
 
         grow = Game_itemGrows(cell)
             || (state->config.enableStepGrowth
@@ -512,6 +552,26 @@ static int hardCandidateScore(const GameState *state, Direction dir)
     }
     if (cell == CELL_BATTLE_SPIKE) {
         score += state->ai.shieldCharges > 0 ? -80 : -1000;
+    }
+    /* 轰炸区惩罚 */
+    if (isBombZoneActive(state, next)) {
+        if (isBombDanger(state, next)) {
+            score += state->ai.shieldCharges > 0 || state->ai.shieldMs > 0 ? -300 : AI_BAD_SCORE / 2;
+        } else {
+            score -= 120;  /* 非活跃期也尽量远离 */
+        }
+    }
+    /* 箭雨期间避免靠近边界 */
+    if (state->event.activeEvent == EVENT_ARROW_STORM) {
+        int borderDist;
+        int mapSize = Game_validMapSize(state->config.mapSize);
+        borderDist = next.row;
+        if (next.col < borderDist) borderDist = next.col;
+        if (mapSize - 1 - next.row < borderDist) borderDist = mapSize - 1 - next.row;
+        if (mapSize - 1 - next.col < borderDist) borderDist = mapSize - 1 - next.col;
+        if (borderDist <= 2) {
+            score -= 60;
+        }
     }
     if (state->ai.bowArrows > 0 && Game_hasClearShot(state, AI_INDEX, false)) {
         score += 260;
