@@ -320,6 +320,66 @@ static void maintainItems(GameState *state)
     }
 }
 
+/* 统计 pos 周围 3x3 区域内障碍物数量 */
+static int countObstaclesNear(const GameState *state, Pos center)
+{
+    int count = 0;
+    int dr, dc;
+    int mapSize = Game_validMapSize(state->config.mapSize);
+
+    for (dr = -1; dr <= 1; dr++) {
+        for (dc = -1; dc <= 1; dc++) {
+            Pos p;
+            p.row = center.row + dr;
+            p.col = center.col + dc;
+            if (Game_isInsideMap(p, mapSize)
+                && state->cells[p.row][p.col] == CELL_OBSTACLE) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+/* 检查在 pos 放障碍物后，所有蛇出生点 3x3 区域障碍物是否仍 ≤2 */
+static bool obstacleNearSpawnOk(const GameState *state, Pos pos)
+{
+    int mapSize = Game_validMapSize(state->config.mapSize);
+    Pos spawns[2];
+    int spawnCount = 0;
+    int i;
+
+    /* P1 出生点 */
+    if (state->config.mode == MODE_AI_BATTLE
+        || state->config.mode == MODE_LOCAL_MULTIPLAYER) {
+        spawns[0].row = mapSize / 2;
+        spawns[0].col = mapSize / 4;
+        spawns[1].row = mapSize / 2;
+        spawns[1].col = mapSize - mapSize / 4 - 1;
+        spawnCount = 2;
+    } else {
+        spawns[0].row = mapSize / 2;
+        spawns[0].col = mapSize / 2;
+        spawnCount = 1;
+    }
+
+    for (i = 0; i < spawnCount; i++) {
+        int cur = countObstaclesNear(state, spawns[i]);
+        /* 如果 pos 正好在出生点的 3x3 范围内，则 count 会 +1 */
+        {
+            int dr = pos.row - spawns[i].row;
+            int dc = pos.col - spawns[i].col;
+            if (dr >= -1 && dr <= 1 && dc >= -1 && dc <= 1) {
+                cur++;
+            }
+        }
+        if (cur > 2) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static void placeObstacles(GameState *state)
 {
     int mapSize = mapSizeOf(state);
@@ -339,7 +399,7 @@ static void placeObstacles(GameState *state)
         tries++;
         pos.row = 1 + randomRange(state, mapSize - 2);
         pos.col = 1 + randomRange(state, mapSize - 2);
-        if (isSpawnFree(state, pos)) {
+        if (isSpawnFree(state, pos) && obstacleNearSpawnOk(state, pos)) {
             state->cells[pos.row][pos.col] = CELL_OBSTACLE;
             placed++;
         }
@@ -359,7 +419,7 @@ static void placeObstacles(GameState *state)
 
                 pos.row = row;
                 pos.col = col;
-                if (isSpawnFree(state, pos)) {
+                if (isSpawnFree(state, pos) && obstacleNearSpawnOk(state, pos)) {
                     state->cells[row][col] = CELL_OBSTACLE;
                     placed++;
                 }
