@@ -1,0 +1,33 @@
+# Visual Studio build outputs
+x64/
+Debug/
+Release/
+.vs/
+
+# MSBuild intermediate files
+BUPT_Eat.*/
+*.tlog/
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.log
+
+# VS user settings
+*.user
+*.suo
+*.sdf
+*.opensdf
+
+# Crash log from this project
+snake_crash.log
+
+# Claude Code local state
+.claude/
+
+# Compiled object files
+*.o
+
+# OS files
+Thumbs.db
+Desktop.ini
