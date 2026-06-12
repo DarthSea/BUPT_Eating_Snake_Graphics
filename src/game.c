@@ -349,6 +349,17 @@ static void placeObstacles(GameState *state)
     }
 }
 
+static int totalPlacedSoFar(const GameState *state, int upTo)
+{
+    int i, total = 0;
+    for (i = 0; i < upTo; i++) {
+        int rows = state->event.zones[i].rowEnd - state->event.zones[i].rowStart + 1;
+        int cols = state->event.zones[i].colEnd - state->event.zones[i].colStart + 1;
+        if (rows > 0 && cols > 0) total += rows * cols;
+    }
+    return total;
+}
+
 static int effectiveMoveInterval(const GameState *state)
 {
     int interval = state->config.moveIntervalMs;
@@ -468,6 +479,18 @@ static StepPlan buildStepPlan(const GameState *state, const Snake *snake)
     }
     if (plan.item == CELL_BATTLE_SPIKE) {
         if (snake->shieldCharges > 0) {
+            plan.shieldUsed = true;
+        } else {
+            plan.dead = true;
+            return plan;
+        }
+    }
+
+    /* 轰炸事件：在爆破区中且炸弹活跃时受伤/死亡 */
+    if (state->event.activeEvent == EVENT_BOMBARDMENT
+        && state->event.bombActive
+        && Game_isInBombZone(state, plan.next)) {
+        if (snake->shieldCharges > 0 || snake->shieldMs > 0) {
             plan.shieldUsed = true;
         } else {
             plan.dead = true;
@@ -635,12 +658,16 @@ static void applyItemEffect(GameState *state, Snake *snake, Snake *opponent, con
     }
 
     if (plan->shieldUsed) {
-        if (plan->item == CELL_BATTLE_SPIKE && snake->shieldCharges > 0) {
+        if ((plan->item == CELL_BATTLE_SPIKE
+             || state->event.activeEvent == EVENT_BOMBARDMENT)
+            && snake->shieldCharges > 0) {
             snake->shieldCharges--;
         } else {
             snake->shieldMs = 0;
         }
-        state->cells[plan->next.row][plan->next.col] = CELL_EMPTY;
+        if (plan->item == CELL_BATTLE_SPIKE || plan->item == CELL_TRAP) {
+            state->cells[plan->next.row][plan->next.col] = CELL_EMPTY;
+        }
         snake->score += 5;
         Game_pushSoundEvent(state, SOUND_TRAP);
         return;
@@ -740,6 +767,37 @@ static void applyArrowHit(GameState *state, ArrowProjectile *arrow)
     if (!Game_isInside(state, arrow->pos)
         || terrainBlocksArrow(state->cells[arrow->pos.row][arrow->pos.col])) {
         arrow->active = false;
+        return;
+    }
+
+    /* 箭雨无主箭矢：碰到任意蛇即造成伤害 */
+    if (arrow->ownerIndex < 0) {
+        hitIndex = findSnakeSegmentAt(&state->player, arrow->pos);
+        if (hitIndex >= 0) {
+            arrow->active = false;
+            Game_pushSoundEvent(state, SOUND_ARROW_HIT);
+            if (hitIndex == 0) {
+                state->player.alive = false;
+            } else {
+                state->player.length = hitIndex;
+                if (state->player.length < 1) state->player.alive = false;
+            }
+            finishIfNeeded(state);
+            return;
+        }
+        hitIndex = findSnakeSegmentAt(&state->ai, arrow->pos);
+        if (hitIndex >= 0) {
+            arrow->active = false;
+            Game_pushSoundEvent(state, SOUND_ARROW_HIT);
+            if (hitIndex == 0) {
+                state->ai.alive = false;
+            } else {
+                state->ai.length = hitIndex;
+                if (state->ai.length < 1) state->ai.alive = false;
+            }
+            finishIfNeeded(state);
+            return;
+        }
         return;
     }
 
@@ -955,6 +1013,218 @@ void Game_init(GameState *state, const GameConfig *config)
     placeObstacles(state);
     maintainItems(state);
     setStatus(state, "Running");
+    memset(&state->event, 0, sizeof(state->event));
+}
+
+static bool shouldTriggerEvent(const GameState *state)
+{
+    if (state->config.variant != VARIANT_DIVERSE) {
+        return false;
+    }
+    if (state->config.mode != MODE_SINGLE
+        && state->config.mode != MODE_AI_BATTLE
+        && state->config.mode != MODE_LOCAL_MULTIPLAYER) {
+        return false;
+    }
+    return true;
+}
+
+static bool isInBombZone(const RandomEventState *event, Pos pos)
+{
+    int i;
+    for (i = 0; i < event->zoneCount; i++) {
+        if (pos.row >= event->zones[i].rowStart && pos.row <= event->zones[i].rowEnd
+            && pos.col >= event->zones[i].colStart && pos.col <= event->zones[i].colEnd) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void initBombardment(GameState *state, int mapSize)
+{
+    int totalCells = mapSize * mapSize;
+    int targetTotal = totalCells / 4;
+    int i;
+
+    state->event.zoneCount = 3;
+    for (i = 0; i < 3; i++) {
+        int remaining = (3 - i);
+        int currentTarget;
+        int area, halfW, halfH;
+        int centerRow, centerCol;
+        int maxHalf;
+
+        if (remaining <= 0) remaining = 1;
+        currentTarget = (targetTotal - totalPlacedSoFar(state, i)) / remaining;
+        area = currentTarget;
+        if (area < 1) area = 1;
+
+        maxHalf = mapSize / 2 - 2;
+        if (maxHalf < 1) maxHalf = 1;
+        halfH = 1 + randomRange(state, maxHalf);
+        if (halfH < 1) halfH = 1;
+        halfW = area / halfH;
+        if (halfW < 1) halfW = 1;
+        if (halfW > maxHalf) halfW = maxHalf;
+
+        centerRow = 1 + halfH + randomRange(state, mapSize - 2 - halfH * 2 + 1);
+        centerCol = 1 + halfW + randomRange(state, mapSize - 2 - halfW * 2 + 1);
+
+        state->event.zones[i].rowStart = centerRow - halfH;
+        state->event.zones[i].rowEnd = centerRow + halfH - 1;
+        state->event.zones[i].colStart = centerCol - halfW;
+        state->event.zones[i].colEnd = centerCol + halfW - 1;
+
+        if (state->event.zones[i].rowStart < 1) state->event.zones[i].rowStart = 1;
+        if (state->event.zones[i].rowEnd >= mapSize - 1) state->event.zones[i].rowEnd = mapSize - 2;
+        if (state->event.zones[i].colStart < 1) state->event.zones[i].colStart = 1;
+        if (state->event.zones[i].colEnd >= mapSize - 1) state->event.zones[i].colEnd = mapSize - 2;
+    }
+    state->event.bombPhase = 0;
+    state->event.bombActive = false;
+    state->event.bombFlashMs = 0;
+    state->event.phaseTimerMs = 0;
+}
+
+static void initArrowStorm(GameState *state, int mapSize)
+{
+    int target = mapSize / 2;
+    int tries = 0;
+    int maxTries = mapSize * mapSize * 4;
+
+    state->event.borderSourceCount = 0;
+    while (state->event.borderSourceCount < target && tries < maxTries) {
+        int side = randomRange(state, 4);
+        Pos pos;
+        Direction dir;
+        bool duplicate = false;
+        int j;
+
+        tries++;
+        switch (side) {
+        case 0:
+            pos.row = 0; pos.col = 1 + randomRange(state, mapSize - 2);
+            dir = DIR_DOWN;
+            break;
+        case 1:
+            pos.row = mapSize - 1; pos.col = 1 + randomRange(state, mapSize - 2);
+            dir = DIR_UP;
+            break;
+        case 2:
+            pos.col = 0; pos.row = 1 + randomRange(state, mapSize - 2);
+            dir = DIR_RIGHT;
+            break;
+        default:
+            pos.col = mapSize - 1; pos.row = 1 + randomRange(state, mapSize - 2);
+            dir = DIR_LEFT;
+            break;
+        }
+
+        for (j = 0; j < state->event.borderSourceCount; j++) {
+            if (posEquals(state->event.borderSources[j].pos, pos)) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate) {
+            state->event.borderSources[state->event.borderSourceCount].pos = pos;
+            state->event.borderSources[state->event.borderSourceCount].dir = dir;
+            state->event.borderSourceCount++;
+        }
+    }
+    state->event.borderFlashing = false;
+    state->event.borderFlashMs = 0;
+    state->event.phaseTimerMs = 0;
+}
+
+static bool spawnBorderArrow(GameState *state, Pos from, Direction dir);
+
+static void startRandomEvent(GameState *state)
+{
+    int mapSize = Game_validMapSize(state->config.mapSize);
+    int r = randomRange(state, 2);
+
+    memset(&state->event, 0, sizeof(state->event));
+
+    if (r == 0) {
+        state->event.activeEvent = EVENT_BOMBARDMENT;
+        initBombardment(state, mapSize);
+    } else {
+        state->event.activeEvent = EVENT_ARROW_STORM;
+        initArrowStorm(state, mapSize);
+    }
+    state->event.eventTimerMs = 10000;
+    state->event.phaseTimerMs = 0;
+    setStatus(state, r == 0 ? "Bombardment!" : "Arrow Storm!");
+}
+
+static void updateRandomEvents(GameState *state, int deltaMs)
+{
+    RandomEventState *ev = &state->event;
+    int eventIntervalMs;
+
+    if (!shouldTriggerEvent(state)) {
+        return;
+    }
+
+    if (state->config.mode == MODE_LOCAL_MULTIPLAYER
+        && state->remainingSeconds <= 30 && state->remainingSeconds > 0) {
+        eventIntervalMs = 5000;
+    } else {
+        eventIntervalMs = 30000;
+    }
+
+    if (ev->activeEvent == EVENT_NONE) {
+        ev->sinceLastEventMs += deltaMs;
+        if (ev->sinceLastEventMs >= eventIntervalMs) {
+            startRandomEvent(state);
+        }
+        return;
+    }
+
+    ev->eventTimerMs -= deltaMs;
+    if (ev->eventTimerMs <= 0) {
+        ev->activeEvent = EVENT_NONE;
+        ev->sinceLastEventMs = 0;
+        ev->bombActive = false;
+        ev->borderFlashing = false;
+        return;
+    }
+
+    ev->phaseTimerMs += deltaMs;
+
+    if (ev->activeEvent == EVENT_BOMBARDMENT) {
+        if (ev->phaseTimerMs >= 2000) {
+            ev->phaseTimerMs -= 2000;
+            ev->bombPhase++;
+            ev->bombActive = true;
+            ev->bombFlashMs = 500;
+        }
+        if (ev->bombActive) {
+            ev->bombFlashMs -= deltaMs;
+            if (ev->bombFlashMs <= 0) {
+                ev->bombActive = false;
+            }
+        }
+    } else if (ev->activeEvent == EVENT_ARROW_STORM) {
+        if (ev->phaseTimerMs >= 2000) {
+            int k;
+            ev->phaseTimerMs -= 2000;
+            ev->borderFlashing = true;
+            ev->borderFlashMs = 400;
+            for (k = 0; k < ev->borderSourceCount; k++) {
+                spawnBorderArrow(state, ev->borderSources[k].pos, ev->borderSources[k].dir);
+            }
+            Game_pushSoundEvent(state, SOUND_BOW);
+        }
+        if (ev->borderFlashing) {
+            ev->borderFlashMs -= deltaMs;
+            if (ev->borderFlashMs <= 0) {
+                ev->borderFlashing = false;
+            }
+        }
+    }
 }
 
 void Game_preparePlayerStart(GameState *state, Direction dir)
@@ -1055,6 +1325,7 @@ void Game_update(GameState *state, int deltaMs)
     reduceEffectTimers(&state->player, deltaMs);
     reduceEffectTimers(&state->ai, deltaMs);
     updateArrows(state, deltaMs);
+    updateRandomEvents(state, deltaMs);
 
     if (state->config.mode == MODE_TIME_CHALLENGE || state->config.mode == MODE_LOCAL_MULTIPLAYER) {
         state->elapsedMs += deltaMs;
@@ -1173,6 +1444,33 @@ static bool fireArrow(GameState *state, int shooterIndex)
         }
     }
 
+    return false;
+}
+
+static bool spawnBorderArrow(GameState *state, Pos from, Direction dir)
+{
+    int i;
+    Pos start;
+
+    start = Common_nextPos(from, dir);
+    if (!Game_isInside(state, start)) {
+        return false;
+    }
+    if (terrainBlocksArrow(state->cells[start.row][start.col])) {
+        return false;
+    }
+
+    for (i = 0; i < MAX_ACTIVE_ARROWS; i++) {
+        ArrowProjectile *arrow = &state->arrows[i];
+        if (!arrow->active) {
+            arrow->active = true;
+            arrow->ownerIndex = -1;
+            arrow->dir = dir;
+            arrow->pos = start;
+            arrow->moveTimerMs = 0;
+            return true;
+        }
+    }
     return false;
 }
 
@@ -1375,4 +1673,34 @@ int Game_consumeSoundEvents(GameState *state, SoundEvent outEvents[], int maxCou
     state->soundEventCount = 0;
 
     return count;
+}
+
+bool Game_isInBombZone(const GameState *state, Pos pos)
+{
+    return isInBombZone(&state->event, pos);
+}
+
+bool Game_isBombActive(const GameState *state)
+{
+    return state->event.bombActive;
+}
+
+bool Game_isBorderFlashing(const GameState *state)
+{
+    return state->event.borderFlashing;
+}
+
+int Game_getBorderSourceCount(const GameState *state)
+{
+    return state->event.borderSourceCount;
+}
+
+const BorderSource *Game_getBorderSources(const GameState *state)
+{
+    return state->event.borderSources;
+}
+
+RandomEventType Game_getActiveEvent(const GameState *state)
+{
+    return state->event.activeEvent;
 }

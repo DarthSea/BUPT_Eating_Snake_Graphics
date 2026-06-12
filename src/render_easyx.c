@@ -850,6 +850,62 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     for (row = 0; row < MAX_ACTIVE_ARROWS; row++) {
         drawArrow(&state->arrows[row], startRow, startCol, visibleCells, cellSize);
     }
+
+    /* 轰炸区覆盖渲染 */
+    if (state->event.activeEvent == EVENT_BOMBARDMENT) {
+        int z;
+        COLORREF zoneColor = state->event.bombActive ? RGB(180, 30, 20) : RGB(200, 55, 40);
+        for (z = 0; z < state->event.zoneCount; z++) {
+            int rStart = state->event.zones[z].rowStart;
+            int rEnd = state->event.zones[z].rowEnd;
+            int cStart = state->event.zones[z].colStart;
+            int cEnd = state->event.zones[z].colEnd;
+            int vrStart = (rStart > startRow) ? rStart : startRow;
+            int vrEnd = (rEnd < startRow + visibleCells - 1) ? rEnd : startRow + visibleCells - 1;
+            int vcStart = (cStart > startCol) ? cStart : startCol;
+            int vcEnd = (cEnd < startCol + visibleCells - 1) ? cEnd : startCol + visibleCells - 1;
+            int br, bc;
+
+            for (br = vrStart; br <= vrEnd; br++) {
+                for (bc = vcStart; bc <= vcEnd; bc++) {
+                    int bx = BOARD_LEFT + (bc - startCol) * cellSize;
+                    int by = BOARD_TOP + (br - startRow) * cellSize;
+                    setfillcolor(zoneColor);
+                    setlinecolor(zoneColor);
+                    solidrectangle(bx + 1, by + 1, bx + cellSize - 1, by + cellSize - 1);
+                }
+            }
+        }
+    }
+
+    /* 箭雨边界闪烁 */
+    if (state->event.activeEvent == EVENT_ARROW_STORM && state->event.borderFlashing) {
+        int k;
+        for (k = 0; k < state->event.borderSourceCount; k++) {
+            Pos p = state->event.borderSources[k].pos;
+            if (isInView(p, startRow, startCol, visibleCells)) {
+                int bx = BOARD_LEFT + (p.col - startCol) * cellSize;
+                int by = BOARD_TOP + (p.row - startRow) * cellSize;
+                int tcx = bx + cellSize / 2;
+                int tcy = by + cellSize / 2;
+
+                setfillcolor(RGB(255, 210, 50));
+                setlinecolor(RGB(255, 160, 20));
+                solidrectangle(bx + 2, by + 2, bx + cellSize - 2, by + cellSize - 2);
+
+                switch (state->event.borderSources[k].dir) {
+                case DIR_UP:    tcy = by + 4; break;
+                case DIR_DOWN:  tcy = by + cellSize - 4; break;
+                case DIR_LEFT:  tcx = bx + 4; break;
+                case DIR_RIGHT: tcx = bx + cellSize - 4; break;
+                default: break;
+                }
+                setfillcolor(RGB(255, 80, 40));
+                solidcircle(tcx, tcy, cellSize / 5);
+            }
+        }
+    }
+
     drawBoardGrid(render, visibleCells, cellSize);
 
     setfillcolor(RGB(24, 34, 42));
@@ -858,6 +914,16 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     drawTextAt(x + 20, BOARD_TOP + 70, variantText(state->config.variant), 20, RGB(144, 190, 163));
     _stprintf_s(buffer, 128, _T("地图：%d x %d"), mapSize, mapSize);
     drawTextAt(x + 20, BOARD_TOP + 102, buffer, 18, RGB(144, 190, 163));
+
+    if (state->event.activeEvent != EVENT_NONE) {
+        const TCHAR *eventName = (state->event.activeEvent == EVENT_BOMBARDMENT)
+            ? _T("事件：地图轰炸") : _T("事件：刀光箭影");
+        int remainSec = (state->event.eventTimerMs + 999) / 1000;
+        if (remainSec < 0) remainSec = 0;
+        _stprintf_s(buffer, 128, _T("%s (%d s)"), eventName, remainSec);
+        drawTextAt(x + 20, BOARD_TOP + 126, buffer, 16, RGB(255, 140, 60));
+    }
+
     if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
         /* P1 得分区 */
         drawTextAt(x + 20, BOARD_TOP + 168, _T("玩家一 (WASD)"), 20, RGB(247, 202, 99));

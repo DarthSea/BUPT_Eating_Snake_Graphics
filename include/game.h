@@ -37,4 +37,12 @@ int Game_countFoodCells(const GameState *state);
 void Game_pushSoundEvent(GameState *state, SoundEvent event);
 int Game_consumeSoundEvents(GameState *state, SoundEvent outEvents[], int maxCount);
 
+/* Random event queries for rendering layer */
+bool Game_isInBombZone(const GameState *state, Pos pos);
+bool Game_isBombActive(const GameState *state);
+bool Game_isBorderFlashing(const GameState *state);
+int Game_getBorderSourceCount(const GameState *state);
+const BorderSource *Game_getBorderSources(const GameState *state);
+RandomEventType Game_getActiveEvent(const GameState *state);
+
 #endif

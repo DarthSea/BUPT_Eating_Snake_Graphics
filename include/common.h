@@ -26,6 +26,7 @@
 #define MAX_SOUND_EVENTS 8
 #define MAX_ACTIVE_ARROWS 8
 #define ARROW_INTERVAL_MS 35
+#define MAX_BORDER_SOURCES (MAX_MAP_SIZE * 2)
 
 #define SPEED_LEVEL_MIN (-2)
 #define SPEED_LEVEL_MAX 2
@@ -138,6 +139,38 @@ typedef struct ArrowProjectile {
     int moveTimerMs;
 } ArrowProjectile;
 
+typedef enum RandomEventType {
+    EVENT_NONE = 0,
+    EVENT_BOMBARDMENT,
+    EVENT_ARROW_STORM
+} RandomEventType;
+
+typedef struct BombZone {
+    int rowStart, rowEnd;
+    int colStart, colEnd;
+} BombZone;
+
+typedef struct BorderSource {
+    Pos pos;
+    Direction dir;
+} BorderSource;
+
+typedef struct RandomEventState {
+    RandomEventType activeEvent;
+    int eventTimerMs;
+    int phaseTimerMs;
+    int sinceLastEventMs;
+    int bombPhase;
+    bool bombActive;
+    int bombFlashMs;
+    BombZone zones[3];
+    int zoneCount;
+    BorderSource borderSources[MAX_BORDER_SOURCES];
+    int borderSourceCount;
+    bool borderFlashing;
+    int borderFlashMs;
+} RandomEventState;
+
 typedef struct GameConfig {
     GameMode mode;
     MapVariant variant;
@@ -178,6 +211,7 @@ typedef struct GameState {
     SoundEvent soundEvents[MAX_SOUND_EVENTS];
     int soundEventCount;
     char statusText[128];
+    RandomEventState event;
 } GameState;
 
 const char *Common_modeName(GameMode mode);
