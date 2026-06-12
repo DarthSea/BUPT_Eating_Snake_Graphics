@@ -344,15 +344,24 @@ static void placeObstacles(GameState *state)
         }
     }
 
-    for (row = 1; row < mapSize - 1 && placed < target; row++) {
-        for (col = 1; col < mapSize - 1 && placed < target; col++) {
-            Pos pos;
+    /* 兜底扫描：起点随机化，避免障碍物全挤在第二行 */
+    {
+        int startRow = 1 + randomRange(state, mapSize - 2);
+        int startCol = 1 + randomRange(state, mapSize - 2);
+        int r, c;
 
-            pos.row = row;
-            pos.col = col;
-            if (isSpawnFree(state, pos)) {
-                state->cells[row][col] = CELL_OBSTACLE;
-                placed++;
+        for (r = 0; r < mapSize - 2 && placed < target; r++) {
+            row = 1 + (startRow - 1 + r) % (mapSize - 2);
+            for (c = 0; c < mapSize - 2 && placed < target; c++) {
+                col = 1 + (startCol - 1 + c) % (mapSize - 2);
+                Pos pos;
+
+                pos.row = row;
+                pos.col = col;
+                if (isSpawnFree(state, pos)) {
+                    state->cells[row][col] = CELL_OBSTACLE;
+                    placed++;
+                }
             }
         }
     }
@@ -1032,7 +1041,8 @@ static bool shouldTriggerEvent(const GameState *state)
     }
     if (state->config.mode != MODE_SINGLE
         && state->config.mode != MODE_AI_BATTLE
-        && state->config.mode != MODE_LOCAL_MULTIPLAYER) {
+        && state->config.mode != MODE_LOCAL_MULTIPLAYER
+        && state->config.mode != MODE_TIME_CHALLENGE) {
         return false;
     }
     return true;
@@ -1186,6 +1196,11 @@ static void updateRandomEvents(GameState *state, int deltaMs)
         eventIntervalMs = 10000;
     }
 
+    /* 限时挑战模式：间隔缩短 25% */
+    if (state->config.mode == MODE_TIME_CHALLENGE) {
+        eventIntervalMs = eventIntervalMs * 75 / 100;
+    }
+
     if (ev->activeEvent == EVENT_NONE) {
         ev->sinceLastEventMs += deltaMs;
         if (ev->sinceLastEventMs >= eventIntervalMs) {
@@ -1201,6 +1216,10 @@ static void updateRandomEvents(GameState *state, int deltaMs)
         ev->bombActive = false;
         ev->bombWarning = false;
         ev->borderFlashing = false;
+        /* 限时挑战模式：每渡过一次事件 +100 分 */
+        if (state->config.mode == MODE_TIME_CHALLENGE) {
+            state->player.score += 100;
+        }
         return;
     }
 
