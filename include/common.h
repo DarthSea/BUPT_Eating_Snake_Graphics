@@ -163,6 +163,8 @@ typedef struct RandomEventState {
     int bombPhase;
     bool bombActive;
     int bombFlashMs;
+    bool bombWarning;
+    int bombWarningMs;
     BombZone zones[3];
     int zoneCount;
     BorderSource borderSources[MAX_BORDER_SOURCES];

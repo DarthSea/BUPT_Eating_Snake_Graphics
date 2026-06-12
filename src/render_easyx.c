@@ -838,23 +838,18 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     solidrectangle(0, 0, render->windowWidth, render->windowHeight);
 
     drawBoardBackground(render, mapSize);
-    for (row = startRow; row < startRow + visibleCells; row++) {
-        for (col = startCol; col < startCol + visibleCells; col++) {
-            if (state->cells[row][col] != CELL_EMPTY) {
-                drawCell(render, row, col, startRow, startCol, cellSize, state->cells[row][col]);
-            }
-        }
-    }
-    drawSnake(render, &state->player, startRow, startCol, visibleCells, cellSize, true);
-    drawSnake(render, &state->ai, startRow, startCol, visibleCells, cellSize, false);
-    for (row = 0; row < MAX_ACTIVE_ARROWS; row++) {
-        drawArrow(&state->arrows[row], startRow, startCol, visibleCells, cellSize);
-    }
 
-    /* 轰炸区覆盖渲染 */
+    /* 轰炸区地面染色（在道具/蛇之前，不遮挡） */
     if (state->event.activeEvent == EVENT_BOMBARDMENT) {
         int z;
-        COLORREF zoneColor = state->event.bombActive ? RGB(180, 30, 20) : RGB(200, 55, 40);
+        COLORREF zoneColor;
+        if (state->event.bombActive) {
+            zoneColor = RGB(180, 30, 20);
+        } else if (state->event.bombWarning) {
+            zoneColor = RGB(230, 110, 40);
+        } else {
+            zoneColor = RGB(200, 55, 40);
+        }
         for (z = 0; z < state->event.zoneCount; z++) {
             int rStart = state->event.zones[z].rowStart;
             int rEnd = state->event.zones[z].rowEnd;
@@ -876,6 +871,19 @@ void Render_drawGame(RenderContext *render, const GameState *state,
                 }
             }
         }
+    }
+
+    for (row = startRow; row < startRow + visibleCells; row++) {
+        for (col = startCol; col < startCol + visibleCells; col++) {
+            if (state->cells[row][col] != CELL_EMPTY) {
+                drawCell(render, row, col, startRow, startCol, cellSize, state->cells[row][col]);
+            }
+        }
+    }
+    drawSnake(render, &state->player, startRow, startCol, visibleCells, cellSize, true);
+    drawSnake(render, &state->ai, startRow, startCol, visibleCells, cellSize, false);
+    for (row = 0; row < MAX_ACTIVE_ARROWS; row++) {
+        drawArrow(&state->arrows[row], startRow, startCol, visibleCells, cellSize);
     }
 
     /* 箭雨边界闪烁 */
@@ -922,6 +930,11 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         if (remainSec < 0) remainSec = 0;
         _stprintf_s(buffer, 128, _T("%s (%d s)"), eventName, remainSec);
         drawTextAt(x + 20, BOARD_TOP + 126, buffer, 16, RGB(255, 140, 60));
+
+        if (state->event.bombWarning) {
+            drawTextAt(x + 20, BOARD_TOP + 148,
+                _T("!!! 即将轰炸 !!!"), 18, RGB(255, 40, 30));
+        }
     }
 
     if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {

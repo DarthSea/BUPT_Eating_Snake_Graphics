@@ -1154,7 +1154,9 @@ static void startRandomEvent(GameState *state)
         state->event.activeEvent = EVENT_ARROW_STORM;
         initArrowStorm(state, mapSize);
     }
-    state->event.eventTimerMs = 10000;
+    state->event.eventTimerMs = 12000;
+    state->event.bombWarning = false;
+    state->event.bombWarningMs = 0;
     state->event.phaseTimerMs = 0;
     setStatus(state, r == 0 ? "Bombardment!" : "Arrow Storm!");
 }
@@ -1172,7 +1174,7 @@ static void updateRandomEvents(GameState *state, int deltaMs)
         && state->remainingSeconds <= 30 && state->remainingSeconds > 0) {
         eventIntervalMs = 5000;
     } else {
-        eventIntervalMs = 30000;
+        eventIntervalMs = 10000;
     }
 
     if (ev->activeEvent == EVENT_NONE) {
@@ -1188,6 +1190,7 @@ static void updateRandomEvents(GameState *state, int deltaMs)
         ev->activeEvent = EVENT_NONE;
         ev->sinceLastEventMs = 0;
         ev->bombActive = false;
+        ev->bombWarning = false;
         ev->borderFlashing = false;
         return;
     }
@@ -1195,11 +1198,15 @@ static void updateRandomEvents(GameState *state, int deltaMs)
     ev->phaseTimerMs += deltaMs;
 
     if (ev->activeEvent == EVENT_BOMBARDMENT) {
-        if (ev->phaseTimerMs >= 2000) {
-            ev->phaseTimerMs -= 2000;
+        /* 1s 预警，然后 3s 时爆破 */
+        if (ev->phaseTimerMs >= 3000) {
+            ev->phaseTimerMs -= 3000;
             ev->bombPhase++;
             ev->bombActive = true;
             ev->bombFlashMs = 500;
+            ev->bombWarning = false;
+        } else if (ev->phaseTimerMs >= 2000 && !ev->bombActive) {
+            ev->bombWarning = true;
         }
         if (ev->bombActive) {
             ev->bombFlashMs -= deltaMs;
