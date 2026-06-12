@@ -1005,25 +1005,24 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             _T("E 射箭  1 加速  2 减速"), 17, RGB(160, 197, 181));
     }
 
-    if (waitingForStart || paused) {
+    if (waitingForStart) {
+        const TCHAR *text = (state->config.mode == MODE_LOCAL_MULTIPLAYER)
+            ? _T("P1: W/A/S/D  P2: 方向键 开始")
+            : _T("按 W/A/S/D 开始");
+        drawTextAt(BOARD_LEFT + 8, BOARD_TOP + 8, text, 18, RGB(247, 202, 99));
+    }
+
+    if (paused) {
         int left = BOARD_LEFT + boardSize / 2 - 190;
         int top = BOARD_TOP + boardSize / 2 - 52;
         int right = left + 380;
         int bottom = top + 104;
-        const TCHAR *text;
-        if (waitingForStart) {
-            text = (state->config.mode == MODE_LOCAL_MULTIPLAYER)
-                ? _T("P1: W/A/S/D  P2: 方向键  开始")
-                : _T("按 W/A/S/D 开始");
-        } else {
-            text = _T("暂停");
-        }
 
         setfillcolor(RGB(16, 22, 27));
         solidrectangle(left, top, right, bottom);
         setlinecolor(RGB(247, 202, 99));
         rectangle(left, top, right, bottom);
-        drawCenteredText(left, top, right, bottom, text, 32, RGB(247, 202, 99));
+        drawCenteredText(left, top, right, bottom, _T("暂停"), 32, RGB(247, 202, 99));
     }
 
     FlushBatchDraw();
