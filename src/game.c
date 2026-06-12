@@ -40,7 +40,8 @@ static int randomRange(GameState *state, int limit)
         return 0;
     }
 
-    return (int)(nextRandom(state) % (unsigned int)limit);
+    /* 取高位：LCG 低位周期性差，右移 16 位后取模分布更均匀 */
+    return (int)((nextRandom(state) >> 16) % (unsigned int)limit);
 }
 
 static int mapSizeOf(const GameState *state)
