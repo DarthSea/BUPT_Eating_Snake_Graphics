@@ -932,8 +932,8 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         drawTextAt(x + 20, BOARD_TOP + 126, buffer, 16, RGB(255, 140, 60));
 
         if (state->event.bombWarning) {
-            drawTextAt(x + 20, BOARD_TOP + 148,
-                _T("!!! 即将轰炸 !!!"), 18, RGB(255, 40, 30));
+            drawTextAt(x + 20, BOARD_TOP + 152,
+                _T("!!! 即将轰炸 !!!"), 24, RGB(255, 30, 20));
         }
     }
 

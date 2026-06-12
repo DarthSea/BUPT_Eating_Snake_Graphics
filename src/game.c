@@ -175,10 +175,10 @@ static bool spawnSpecificItem(GameState *state, CellType item)
 {
     int mapSize = mapSizeOf(state);
     int tries;
-    int row;
-    int col;
+    int maxTries = mapSize * mapSize * 4;
 
-    for (tries = 0; tries < mapSize * mapSize * 2; tries++) {
+    /* 第一阶段：随机尝试 */
+    for (tries = 0; tries < maxTries; tries++) {
         Pos pos;
 
         pos.row = 1 + randomRange(state, mapSize - 2);
@@ -189,15 +189,24 @@ static bool spawnSpecificItem(GameState *state, CellType item)
         }
     }
 
-    for (row = 1; row < mapSize - 1; row++) {
-        for (col = 1; col < mapSize - 1; col++) {
-            Pos pos;
+    /* 第二阶段：全图扫描，但起点随机化避免道具扎堆在左上角 */
+    {
+        int startRow = 1 + randomRange(state, mapSize - 2);
+        int startCol = 1 + randomRange(state, mapSize - 2);
+        int r, c;
+        int row, col;
 
-            pos.row = row;
-            pos.col = col;
-            if (isSpawnFree(state, pos)) {
-                state->cells[row][col] = item;
-                return true;
+        for (r = 0; r < mapSize - 2; r++) {
+            row = 1 + (startRow - 1 + r) % (mapSize - 2);
+            for (c = 0; c < mapSize - 2; c++) {
+                col = 1 + (startCol - 1 + c) % (mapSize - 2);
+                Pos pos;
+                pos.row = row;
+                pos.col = col;
+                if (isSpawnFree(state, pos)) {
+                    state->cells[row][col] = item;
+                    return true;
+                }
             }
         }
     }
