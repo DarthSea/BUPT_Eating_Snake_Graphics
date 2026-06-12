@@ -932,8 +932,9 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         drawTextAt(x + 20, BOARD_TOP + 126, buffer, 16, RGB(255, 140, 60));
 
         if (state->event.bombWarning) {
-            drawTextAt(x + 20, BOARD_TOP + 152,
-                _T("!!! 即将轰炸 !!!"), 24, RGB(255, 30, 20));
+            drawCenteredText(x, BOARD_TOP + 160,
+                render->windowWidth - 24, BOARD_TOP + 200,
+                _T("!!! 即将轰炸 !!!"), 26, RGB(255, 30, 20));
         }
     }
 
