@@ -506,8 +506,9 @@ static void drawArrow(const ArrowProjectile *arrow, int startRow, int startCol,
         tailX = x + 1;
     }
 
-    setlinecolor(RGB(247, 226, 128));
-    setfillcolor(RGB(247, 226, 128));
+    /* 箭身：亮橙红 + 白色边框，与道具颜色形成反差 */
+    setlinecolor(RGB(255, 255, 255));
+    setfillcolor(RGB(255, 80, 40));
     line(tailX, tailY, tipX, tipY);
     if (arrow->dir == DIR_UP || arrow->dir == DIR_DOWN) {
         solidcircle(tipX, tipY, wing / 2);
@@ -518,6 +519,9 @@ static void drawArrow(const ArrowProjectile *arrow, int startRow, int startCol,
         line(tipX, tipY, cx, cy - wing);
         line(tipX, tipY, cx, cy + wing);
     }
+    /* 箭头白色描边 */
+    setlinecolor(RGB(255, 255, 255));
+    circle(tipX, tipY, wing / 2);
 }
 
 static void drawSnake(const RenderContext *render, const Snake *snake,
