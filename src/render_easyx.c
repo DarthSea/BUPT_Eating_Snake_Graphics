@@ -839,7 +839,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
 
     drawBoardBackground(render, mapSize);
 
-    /* 轰炸区地面染色（在道具/蛇之前，不遮挡） */
+    /* 轰炸区地面染色：每个区画一个整矩形，O(1) 而非逐格绘制 */
     if (state->event.activeEvent == EVENT_BOMBARDMENT) {
         int z;
         COLORREF zoneColor;
@@ -850,25 +850,27 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         } else {
             zoneColor = RGB(200, 55, 40);
         }
+        setfillcolor(zoneColor);
+        setlinecolor(zoneColor);
         for (z = 0; z < state->event.zoneCount; z++) {
-            int rStart = state->event.zones[z].rowStart;
-            int rEnd = state->event.zones[z].rowEnd;
-            int cStart = state->event.zones[z].colStart;
-            int cEnd = state->event.zones[z].colEnd;
-            int vrStart = (rStart > startRow) ? rStart : startRow;
-            int vrEnd = (rEnd < startRow + visibleCells - 1) ? rEnd : startRow + visibleCells - 1;
-            int vcStart = (cStart > startCol) ? cStart : startCol;
-            int vcEnd = (cEnd < startCol + visibleCells - 1) ? cEnd : startCol + visibleCells - 1;
-            int br, bc;
+            int vrStart = state->event.zones[z].rowStart;
+            int vrEnd = state->event.zones[z].rowEnd;
+            int vcStart = state->event.zones[z].colStart;
+            int vcEnd = state->event.zones[z].colEnd;
 
-            for (br = vrStart; br <= vrEnd; br++) {
-                for (bc = vcStart; bc <= vcEnd; bc++) {
-                    int bx = BOARD_LEFT + (bc - startCol) * cellSize;
-                    int by = BOARD_TOP + (br - startRow) * cellSize;
-                    setfillcolor(zoneColor);
-                    setlinecolor(zoneColor);
-                    solidrectangle(bx + 1, by + 1, bx + cellSize - 1, by + cellSize - 1);
-                }
+            /* 裁剪到视口 */
+            if (vrStart < startRow) vrStart = startRow;
+            if (vrEnd >= startRow + visibleCells) vrEnd = startRow + visibleCells - 1;
+            if (vcStart < startCol) vcStart = startCol;
+            if (vcEnd >= startCol + visibleCells) vcEnd = startCol + visibleCells - 1;
+            if (vrStart > vrEnd || vcStart > vcEnd) continue;
+
+            {
+                int bx = BOARD_LEFT + (vcStart - startCol) * cellSize;
+                int by = BOARD_TOP + (vrStart - startRow) * cellSize;
+                int bw = (vcEnd - vcStart + 1) * cellSize;
+                int bh = (vrEnd - vrStart + 1) * cellSize;
+                solidrectangle(bx + 1, by + 1, bx + bw - 1, by + bh - 1);
             }
         }
     }
