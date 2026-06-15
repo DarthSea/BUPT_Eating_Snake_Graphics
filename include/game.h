@@ -44,5 +44,6 @@ bool Game_isBorderFlashing(const GameState *state);
 int Game_getBorderSourceCount(const GameState *state);
 const BorderSource *Game_getBorderSources(const GameState *state);
 RandomEventType Game_getActiveEvent(const GameState *state);
+bool Game_isUsingParticles(void);
 
 #endif

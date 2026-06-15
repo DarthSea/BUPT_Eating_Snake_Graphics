@@ -63,4 +63,10 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     bool paused, bool waitingForStart);
 void Render_drawGameOver(const GameState *state, int selectedAction);
 
+/* Particle system */
+void Render_particlesInit(void);
+void Render_particlesUpdate(int deltaMs);
+void Render_particlesDraw(void);
+void Render_spawnParticles(int screenX, int screenY, int count, COLORREF color, int lifeMs);
+
 #endif

@@ -33,8 +33,8 @@ static const ResolutionInfo RESOLUTIONS[] = {
 };
 
 static const COLORREF FALLBACK_COLORS[TEX_COUNT] = {
-    RGB(61, 114, 74),
-    RGB(84, 84, 86),
+    COLOR_BOARD,
+    COLOR_WALL_COLOR,
     RGB(91, 68, 52),
     RGB(222, 71, 63),
     RGB(246, 184, 70),
@@ -342,11 +342,16 @@ static void drawMenuButton(int index, int selected, const TCHAR *text)
     int top = 190 + index * 58;
     bool isSelected = index == selected;
 
-    setfillcolor(isSelected ? RGB(53, 108, 81) : RGB(30, 42, 52));
-    setlinecolor(isSelected ? RGB(247, 202, 99) : RGB(91, 110, 122));
+    setfillcolor(isSelected ? COLOR_CARD_HOVER : COLOR_CARD);
+    setlinecolor(isSelected ? COLOR_ACCENT : COLOR_BORDER);
     solidrectangle(left, top, left + width, top + height);
     rectangle(left, top, left + width, top + height);
-    drawCenteredText(left, top, left + width, top + height, text, 23, RGB(239, 245, 238));
+    if (isSelected) {
+        setfillcolor(COLOR_ACCENT);
+        solidrectangle(left, top, left + 3, top + height);
+    }
+    drawCenteredText(left, top, left + width, top + height, text, 21,
+        isSelected ? COLOR_ACCENT : COLOR_TEXT);
 }
 
 static void drawSmallButton(int index, bool selected, const TCHAR *text, int count)
@@ -358,11 +363,16 @@ static void drawSmallButton(int index, bool selected, const TCHAR *text, int cou
     int left = (gWindowWidth - total) / 2 + index * (width + gap);
     int top = 330;
 
-    setfillcolor(selected ? RGB(63, 122, 90) : RGB(33, 45, 55));
-    setlinecolor(selected ? RGB(248, 211, 106) : RGB(88, 105, 118));
+    setfillcolor(selected ? COLOR_CARD_HOVER : COLOR_CARD);
+    setlinecolor(selected ? COLOR_ACCENT : COLOR_BORDER);
     solidrectangle(left, top, left + width, top + height);
     rectangle(left, top, left + width, top + height);
-    drawCenteredText(left, top, left + width, top + height, text, 24, RGB(240, 246, 241));
+    if (selected) {
+        setfillcolor(COLOR_ACCENT);
+        solidrectangle(left, top, left + 3, top + height);
+    }
+    drawCenteredText(left, top, left + width, top + height, text, 24,
+        selected ? COLOR_ACCENT : COLOR_TEXT);
 }
 
 static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TCHAR *value)
@@ -372,12 +382,16 @@ static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TC
     int width = gWindowWidth - left * 2;
     int height = 48;
 
-    setfillcolor(selected ? RGB(49, 83, 77) : RGB(28, 39, 48));
-    setlinecolor(selected ? RGB(248, 211, 106) : RGB(83, 101, 114));
+    setfillcolor(selected ? COLOR_CARD_HOVER : COLOR_CARD);
+    setlinecolor(selected ? COLOR_ACCENT : COLOR_BORDER);
     solidrectangle(left, top, left + width, top + height);
     rectangle(left, top, left + width, top + height);
-    drawTextAt(left + 22, top + 12, label, 21, RGB(235, 242, 235));
-    drawTextAt(left + width - 260, top + 12, value, 21, RGB(247, 202, 99));
+    if (selected) {
+        setfillcolor(COLOR_ACCENT);
+        solidrectangle(left, top, left + 3, top + height);
+    }
+    drawTextAt(left + 22, top + 12, label, 21, selected ? COLOR_ACCENT : COLOR_TEXT);
+    drawTextAt(left + width - 260, top + 12, value, 21, COLOR_SCORE);
 }
 
 static void loadTexture(TextureSlot *slot, const TCHAR *folder, TextureId id, int textureSize)
@@ -522,6 +536,9 @@ static void drawArrow(const ArrowProjectile *arrow, int startRow, int startCol,
     /* 箭头白色描边 */
     setlinecolor(RGB(255, 255, 255));
     circle(tipX, tipY, wing / 2);
+    /* 尾部拖尾 */
+    setfillcolor(RGB(255, 180, 80));
+    solidcircle(tailX, tailY, cellSize / 8);
 }
 
 static void drawSnake(const RenderContext *render, const Snake *snake,
@@ -563,7 +580,7 @@ static void drawBoardGrid(const RenderContext *render, int visibleCells, int cel
         return;
     }
 
-    setlinecolor(RGB(34, 51, 48));
+    setlinecolor(COLOR_GRID);
     for (row = 0; row <= visibleCells; row++) {
         int y = BOARD_TOP + row * cellSize;
         line(BOARD_LEFT, y, BOARD_LEFT + boardSize, y);
@@ -629,7 +646,8 @@ bool Render_init(RenderContext *render, int skinId)
     gWindowHeight = render->windowHeight;
     initgraph(render->windowWidth, render->windowHeight);
     applyNativeWindowMode(render->fullscreen, render->windowWidth, render->windowHeight);
-    setbkcolor(RGB(13, 19, 24));
+    setbkcolor(COLOR_BG);
+    Render_particlesInit();
     BeginBatchDraw();
     return Render_loadSkin(render, skinId);
 }
@@ -675,7 +693,7 @@ bool Render_applyDisplayMode(RenderContext *render, DisplayResolution resolution
     gWindowHeight = render->windowHeight;
     initgraph(render->windowWidth, render->windowHeight);
     applyNativeWindowMode(render->fullscreen, render->windowWidth, render->windowHeight);
-    setbkcolor(RGB(13, 19, 24));
+    setbkcolor(COLOR_BG);
     BeginBatchDraw();
     return Render_loadSkin(render, render->skinId);
 }
@@ -747,10 +765,10 @@ void Render_drawWelcome(int selected)
     int i;
 
     cleardevice();
-    setfillcolor(RGB(13, 19, 24));
+    setfillcolor(COLOR_BG);
     solidrectangle(0, 0, gWindowWidth, gWindowHeight);
-    drawCenteredText(0, 72, gWindowWidth, 132, _T("图形化贪吃蛇"), 44, RGB(241, 246, 239));
-    drawCenteredText(0, 137, gWindowWidth, 175, _T("BUPT EasyX Edition"), 20, RGB(132, 185, 158));
+    drawCenteredText(0, 72, gWindowWidth, 132, _T("图形化贪吃蛇"), 44, COLOR_TEXT);
+    drawCenteredText(0, 137, gWindowWidth, 175, _T("BUPT EasyX Edition"), 20, COLOR_TEXT_DIM);
     for (i = 0; i < 7; i++) {
         drawMenuButton(i, selected, OPTIONS[i]);
     }
@@ -760,9 +778,9 @@ void Render_drawWelcome(int selected)
 void Render_drawVariantMenu(MapVariant selected)
 {
     cleardevice();
-    setfillcolor(RGB(13, 19, 24));
+    setfillcolor(COLOR_BG);
     solidrectangle(0, 0, gWindowWidth, gWindowHeight);
-    drawCenteredText(0, 145, gWindowWidth, 200, _T("选择玩法规则"), 38, RGB(242, 247, 241));
+    drawCenteredText(0, 145, gWindowWidth, 200, _T("选择玩法规则"), 38, COLOR_TEXT);
     drawSmallButton(0, selected == VARIANT_CLASSIC, _T("常规模式"), 2);
     drawSmallButton(1, selected == VARIANT_DIVERSE, _T("多样模式"), 2);
     FlushBatchDraw();
@@ -771,9 +789,9 @@ void Render_drawVariantMenu(MapVariant selected)
 void Render_drawDifficultyMenu(AiDifficulty selected)
 {
     cleardevice();
-    setfillcolor(RGB(13, 19, 24));
+    setfillcolor(COLOR_BG);
     solidrectangle(0, 0, gWindowWidth, gWindowHeight);
-    drawCenteredText(0, 145, gWindowWidth, 200, _T("选择 AI 难度"), 38, RGB(242, 247, 241));
+    drawCenteredText(0, 145, gWindowWidth, 200, _T("选择 AI 难度"), 38, COLOR_TEXT);
     drawSmallButton(0, selected == AI_EASY, _T("低"), 3);
     drawSmallButton(1, selected == AI_MEDIUM, _T("中"), 3);
     drawSmallButton(2, selected == AI_HARD, _T("高"), 3);
@@ -785,9 +803,9 @@ void Render_drawSkinMenu(int selectedSkin)
     int i;
 
     cleardevice();
-    setfillcolor(RGB(13, 19, 24));
+    setfillcolor(COLOR_BG);
     solidrectangle(0, 0, gWindowWidth, gWindowHeight);
-    drawCenteredText(0, 110, gWindowWidth, 165, _T("更换时装"), 40, RGB(242, 247, 241));
+    drawCenteredText(0, 110, gWindowWidth, 165, _T("更换时装"), 40, COLOR_TEXT);
     for (i = 0; i < Render_skinCount(); i++) {
         drawMenuButton(i, selectedSkin, Render_skinDisplayName(i));
     }
@@ -799,11 +817,11 @@ void Render_drawSettings(const GameConfig *config, int selectedRow)
     TCHAR value[64];
 
     cleardevice();
-    setfillcolor(RGB(13, 19, 24));
+    setfillcolor(COLOR_BG);
     solidrectangle(0, 0, gWindowWidth, gWindowHeight);
-    drawCenteredText(0, 74, gWindowWidth, 128, _T("设置"), 40, RGB(242, 247, 241));
+    drawCenteredText(0, 74, gWindowWidth, 128, _T("设置"), 40, COLOR_TEXT);
     drawCenteredText(0, 136, gWindowWidth, 168,
-        _T("W/S 选择，A/D 修改，Enter 返回"), 18, RGB(144, 190, 163));
+        _T("W/S 选择，A/D 修改，Enter 返回"), 18, COLOR_TEXT_DIM);
 
     _stprintf_s(value, 64, _T("%s"), config->enableStepGrowth ? _T("开启") : _T("关闭"));
     drawSettingsRow(0, selectedRow == 0, _T("N 步自动增长"), value);
@@ -835,10 +853,28 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     int col;
     int x = panelLeft(render, mapSize);
     TCHAR buffer[128];
+    static int gLastScore = -1;
+    static int gScoreBounceMs = 0;
+    static int gWarnPulseTimer = 0;
+    static int gDeathFlashMs = 0;
+    int scoreFontSize;
+
+    /* Score bounce + particle spawn on score change */
+    if (state->player.score != gLastScore && gLastScore >= 0) {
+        gScoreBounceMs = 300;
+        if (state->player.length > 0) {
+            Pos head = state->player.body[0];
+            int sx = BOARD_LEFT + (head.col - startCol) * cellSize + cellSize / 2;
+            int sy = BOARD_TOP + (head.row - startRow) * cellSize + cellSize / 2;
+            Render_spawnParticles(sx, sy, 6, COLOR_SCORE, 600);
+        }
+    }
+    gLastScore = state->player.score;
+    scoreFontSize = (gScoreBounceMs > 0) ? 38 : 32;
 
     ensureGameTextureSize(render, cellSize);
     cleardevice();
-    setfillcolor(RGB(13, 19, 24));
+    setfillcolor(COLOR_BG);
     solidrectangle(0, 0, render->windowWidth, render->windowHeight);
 
     drawBoardBackground(render, mapSize);
@@ -875,6 +911,8 @@ void Render_drawGame(RenderContext *render, const GameState *state,
                 int bw = (vcEnd - vcStart + 1) * cellSize;
                 int bh = (vrEnd - vrStart + 1) * cellSize;
                 solidrectangle(bx + 1, by + 1, bx + bw - 1, by + bh - 1);
+                setlinecolor(state->event.bombActive ? COLOR_DANGER : COLOR_WARNING);
+                rectangle(bx + 1, by + 1, bx + bw - 1, by + bh - 1);
             }
         }
     }
@@ -922,12 +960,25 @@ void Render_drawGame(RenderContext *render, const GameState *state,
 
     drawBoardGrid(render, visibleCells, cellSize);
 
-    setfillcolor(RGB(24, 34, 42));
+    /* Death flash overlay */
+    if (state->result != RESULT_RUNNING && gDeathFlashMs == 0) {
+        gDeathFlashMs = 900;
+    }
+    if (gDeathFlashMs > 0) {
+        gDeathFlashMs -= 16;
+        if (gDeathFlashMs < 0) gDeathFlashMs = 0;
+        if ((gDeathFlashMs / 300) % 2 == 0) {
+            setfillcolor(COLOR_DANGER);
+            solidrectangle(BOARD_LEFT, BOARD_TOP, BOARD_LEFT + boardSize, BOARD_TOP + boardSize);
+        }
+    }
+
+    setfillcolor(COLOR_PANEL);
     solidrectangle(x, BOARD_TOP, render->windowWidth - 24, BOARD_TOP + boardSize);
-    drawTextAt(x + 20, BOARD_TOP + 24, modeText(state->config.mode), 26, RGB(241, 246, 239));
-    drawTextAt(x + 20, BOARD_TOP + 70, variantText(state->config.variant), 20, RGB(144, 190, 163));
+    drawTextAt(x + 20, BOARD_TOP + 24, modeText(state->config.mode), 26, COLOR_TEXT);
+    drawTextAt(x + 20, BOARD_TOP + 70, variantText(state->config.variant), 20, COLOR_TEXT_DIM);
     _stprintf_s(buffer, 128, _T("地图：%d x %d"), mapSize, mapSize);
-    drawTextAt(x + 20, BOARD_TOP + 102, buffer, 18, RGB(144, 190, 163));
+    drawTextAt(x + 20, BOARD_TOP + 102, buffer, 18, COLOR_TEXT_DIM);
 
     if (state->event.activeEvent != EVENT_NONE) {
         const TCHAR *eventName = (state->event.activeEvent == EVENT_BOMBARDMENT)
@@ -935,87 +986,107 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         int remainSec = (state->event.eventTimerMs + 999) / 1000;
         if (remainSec < 0) remainSec = 0;
         _stprintf_s(buffer, 128, _T("%s (%d s)"), eventName, remainSec);
-        drawTextAt(x + 20, BOARD_TOP + 126, buffer, 16, RGB(255, 140, 60));
+        drawTextAt(x + 20, BOARD_TOP + 126, buffer, 16, COLOR_WARNING);
+
+        /* Event progress bar */
+        {
+            int barX = x + 20;
+            int barY = BOARD_TOP + 148;
+            int barW = render->windowWidth - 24 - barX - 20;
+            int barH = 6;
+            int elapsed = 12000 - state->event.eventTimerMs;
+            if (elapsed < 0) elapsed = 0;
+            int filled = barW * elapsed / 12000;
+            if (filled > barW) filled = barW;
+            COLORREF barColor = (state->event.eventTimerMs < 3000) ? COLOR_DANGER : COLOR_ACCENT;
+            setfillcolor(COLOR_BG);
+            solidrectangle(barX, barY, barX + barW, barY + barH);
+            setfillcolor(barColor);
+            solidrectangle(barX, barY, barX + filled, barY + barH);
+        }
 
         if (state->event.bombWarning) {
+            gWarnPulseTimer += 16;
+            int warnFontSize = ((gWarnPulseTimer / 500) % 2 == 0) ? 26 : 30;
             drawCenteredText(x, BOARD_TOP + 160,
                 render->windowWidth - 24, BOARD_TOP + 200,
-                _T("!!! 即将轰炸 !!!"), 26, RGB(255, 30, 20));
+                _T("!!! 即将轰炸 !!!"), warnFontSize, COLOR_DANGER);
         }
     }
 
     if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
         /* P1 得分区 */
-        drawTextAt(x + 20, BOARD_TOP + 168, _T("玩家一 (WASD)"), 20, RGB(247, 202, 99));
+        drawTextAt(x + 20, BOARD_TOP + 168, _T("玩家一 (WASD)"), 20, COLOR_SCORE);
         _stprintf_s(buffer, 128, _T("得分：%d"), state->player.score);
-        drawTextAt(x + 20, BOARD_TOP + 198, buffer, 28, RGB(247, 202, 99));
+        drawTextAt(x + 20, BOARD_TOP + 198, buffer,
+            gScoreBounceMs > 0 ? 34 : 28, COLOR_SCORE);
         _stprintf_s(buffer, 128, _T("长度：%d"), state->player.length);
-        drawTextAt(x + 20, BOARD_TOP + 238, buffer, 18, RGB(225, 235, 224));
+        drawTextAt(x + 20, BOARD_TOP + 238, buffer, 18, COLOR_TEXT);
         _stprintf_s(buffer, 128, _T("弓箭：%d  护盾：%d"),
             state->player.bowArrows, state->player.shieldCharges);
-        drawTextAt(x + 20, BOARD_TOP + 264, buffer, 18, RGB(204, 214, 222));
+        drawTextAt(x + 20, BOARD_TOP + 264, buffer, 18, COLOR_TEXT_DIM);
 
         /* 分隔线 */
-        setlinecolor(RGB(64, 76, 82));
+        setlinecolor(COLOR_BORDER);
         line(x + 20, BOARD_TOP + 300, x + SIDE_PANEL_WIDTH - 44, BOARD_TOP + 300);
 
         /* P2 得分区 */
-        drawTextAt(x + 20, BOARD_TOP + 316, _T("玩家二 (方向键)"), 20, RGB(86, 206, 144));
+        drawTextAt(x + 20, BOARD_TOP + 316, _T("玩家二 (方向键)"), 20, COLOR_POSITIVE);
         _stprintf_s(buffer, 128, _T("得分：%d"), state->ai.score);
-        drawTextAt(x + 20, BOARD_TOP + 346, buffer, 28, RGB(86, 206, 144));
+        drawTextAt(x + 20, BOARD_TOP + 346, buffer, 28, COLOR_POSITIVE);
         _stprintf_s(buffer, 128, _T("长度：%d"), state->ai.length);
-        drawTextAt(x + 20, BOARD_TOP + 386, buffer, 18, RGB(225, 235, 224));
+        drawTextAt(x + 20, BOARD_TOP + 386, buffer, 18, COLOR_TEXT);
         _stprintf_s(buffer, 128, _T("弓箭：%d  护盾：%d"),
             state->ai.bowArrows, state->ai.shieldCharges);
-        drawTextAt(x + 20, BOARD_TOP + 412, buffer, 18, RGB(204, 214, 222));
+        drawTextAt(x + 20, BOARD_TOP + 412, buffer, 18, COLOR_TEXT_DIM);
 
         /* 剩余时间 */
         _stprintf_s(buffer, 128, _T("剩余时间：%d s"), state->remainingSeconds);
-        drawTextAt(x + 20, BOARD_TOP + 460, buffer, 22, RGB(103, 196, 224));
+        drawTextAt(x + 20, BOARD_TOP + 460, buffer, 22, COLOR_ACCENT);
 
-        drawTextAt(x + 20, BOARD_TOP + boardSize - 64, render->skinName, 20, RGB(160, 197, 181));
+        drawTextAt(x + 20, BOARD_TOP + boardSize - 64, render->skinName, 20, COLOR_TEXT_DIM);
     } else {
         _stprintf_s(buffer, 128, _T("速度档：%+d"), state->speedLevel);
-        drawTextAt(x + 20, BOARD_TOP + 130, buffer, 18, RGB(247, 202, 99));
-        drawTextAt(x + 20, BOARD_TOP + 168, _T("玩家得分"), 20, RGB(178, 194, 194));
+        drawTextAt(x + 20, BOARD_TOP + 130, buffer, 18, COLOR_SCORE);
+        drawTextAt(x + 20, BOARD_TOP + 168, _T("玩家得分"), 20, COLOR_TEXT_DIM);
         _stprintf_s(buffer, 128, _T("%d"), state->player.score);
-        drawTextAt(x + 20, BOARD_TOP + 196, buffer, 32, RGB(247, 202, 99));
+        drawTextAt(x + 20, BOARD_TOP + 196, buffer, scoreFontSize, COLOR_SCORE);
         _stprintf_s(buffer, 128, _T("长度：%d"), state->player.length);
-        drawTextAt(x + 20, BOARD_TOP + 248, buffer, 20, RGB(225, 235, 224));
+        drawTextAt(x + 20, BOARD_TOP + 248, buffer, 20, COLOR_TEXT);
         _stprintf_s(buffer, 128, _T("弓箭：%d  护盾：%d"),
             state->player.bowArrows, state->player.shieldCharges);
-        drawTextAt(x + 20, BOARD_TOP + 278, buffer, 18, RGB(204, 214, 222));
+        drawTextAt(x + 20, BOARD_TOP + 278, buffer, 18, COLOR_TEXT_DIM);
 
         if (state->config.mode == MODE_AI_BATTLE) {
             _stprintf_s(buffer, 128, _T("AI 分数：%d"), state->ai.score);
-            drawTextAt(x + 20, BOARD_TOP + 330, buffer, 20, RGB(242, 122, 119));
+            drawTextAt(x + 20, BOARD_TOP + 330, buffer, 20, COLOR_DANGER);
             _stprintf_s(buffer, 128, _T("AI 弓箭：%d  护盾：%d"),
                 state->ai.bowArrows, state->ai.shieldCharges);
-            drawTextAt(x + 20, BOARD_TOP + 360, buffer, 18, RGB(204, 214, 222));
-            drawTextAt(x + 20, BOARD_TOP + 392, difficultyText(state->config.aiDifficulty), 20, RGB(204, 214, 222));
+            drawTextAt(x + 20, BOARD_TOP + 360, buffer, 18, COLOR_TEXT_DIM);
+            drawTextAt(x + 20, BOARD_TOP + 392, difficultyText(state->config.aiDifficulty), 20, COLOR_TEXT_DIM);
         }
 
         if (state->config.mode == MODE_TIME_CHALLENGE) {
             _stprintf_s(buffer, 128, _T("剩余时间：%d s"), state->remainingSeconds);
-            drawTextAt(x + 20, BOARD_TOP + 330, buffer, 22, RGB(103, 196, 224));
+            drawTextAt(x + 20, BOARD_TOP + 330, buffer, 22, COLOR_ACCENT);
         }
 
-        drawTextAt(x + 20, BOARD_TOP + boardSize - 64, render->skinName, 20, RGB(160, 197, 181));
+        drawTextAt(x + 20, BOARD_TOP + boardSize - 64, render->skinName, 20, COLOR_TEXT_DIM);
     }
 
     if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
         drawTextAt(x + 20, BOARD_TOP + boardSize - 36,
-            _T("P1: E射箭  P2: /射箭"), 16, RGB(160, 197, 181));
+            _T("P1: E射箭  P2: /射箭"), 16, COLOR_TEXT_DIM);
     } else {
         drawTextAt(x + 20, BOARD_TOP + boardSize - 36,
-            _T("E 射箭  1 加速  2 减速"), 17, RGB(160, 197, 181));
+            _T("E 射箭  1 加速  2 减速"), 17, COLOR_TEXT_DIM);
     }
 
     if (waitingForStart) {
         const TCHAR *text = (state->config.mode == MODE_LOCAL_MULTIPLAYER)
             ? _T("P1: W/A/S/D  P2: 方向键 开始")
             : _T("按 W/A/S/D 开始");
-        drawTextAt(BOARD_LEFT + 8, BOARD_TOP + 8, text, 18, RGB(247, 202, 99));
+        drawTextAt(BOARD_LEFT + 8, BOARD_TOP + 8, text, 18, COLOR_SCORE);
     }
 
     if (paused) {
@@ -1024,11 +1095,22 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         int right = left + 380;
         int bottom = top + 104;
 
-        setfillcolor(RGB(16, 22, 27));
+        setfillcolor(COLOR_BG);
         solidrectangle(left, top, right, bottom);
-        setlinecolor(RGB(247, 202, 99));
+        setlinecolor(COLOR_SCORE);
         rectangle(left, top, right, bottom);
-        drawCenteredText(left, top, right, bottom, _T("暂停"), 32, RGB(247, 202, 99));
+        drawCenteredText(left, top, right, bottom, _T("暂停"), 32, COLOR_SCORE);
+    }
+
+    /* Score bounce timer decrement */
+    if (gScoreBounceMs > 0) {
+        gScoreBounceMs -= 16;
+        if (gScoreBounceMs < 0) gScoreBounceMs = 0;
+    }
+
+    /* Particle overlay */
+    if (Game_isUsingParticles()) {
+        Render_particlesDraw();
     }
 
     FlushBatchDraw();
@@ -1040,7 +1122,7 @@ void Render_drawGameOver(const GameState *state, int selectedAction)
     const TCHAR *title;
 
     cleardevice();
-    setfillcolor(RGB(13, 19, 24));
+    setfillcolor(COLOR_BG);
     solidrectangle(0, 0, gWindowWidth, gWindowHeight);
     if (state->result == RESULT_P1_WIN) {
         title = _T("玩家一 胜利");
@@ -1058,17 +1140,76 @@ void Render_drawGameOver(const GameState *state, int selectedAction)
         title = _T("游戏结束");
     }
 
-    drawCenteredText(0, 130, gWindowWidth, 190, title, 44, RGB(241, 246, 239));
+    drawCenteredText(0, 130, gWindowWidth, 190, title, 44, COLOR_TEXT);
     _stprintf_s(score, 128, _T("玩家一：%d"), state->player.score);
-    drawCenteredText(0, 215, gWindowWidth, 260, score, 28, RGB(247, 202, 99));
+    drawCenteredText(0, 215, gWindowWidth, 260, score, 28, COLOR_SCORE);
     if (state->config.mode == MODE_AI_BATTLE || state->config.mode == MODE_LOCAL_MULTIPLAYER) {
         const TCHAR *p2Label = (state->config.mode == MODE_LOCAL_MULTIPLAYER)
             ? _T("玩家二") : _T("AI");
         _stprintf_s(score, 128, _T("%s：%d"), p2Label, state->ai.score);
         drawCenteredText(0, 260, gWindowWidth, 305, score, 24,
-            state->config.mode == MODE_LOCAL_MULTIPLAYER ? RGB(86, 206, 144) : RGB(242, 122, 119));
+            state->config.mode == MODE_LOCAL_MULTIPLAYER ? COLOR_POSITIVE : COLOR_DANGER);
     }
     drawSmallButton(0, selectedAction == 0, _T("重新开始"), 2);
     drawSmallButton(1, selectedAction == 1, _T("返回菜单"), 2);
     FlushBatchDraw();
+}
+
+/* ================================================================
+ * Particle system
+ * ================================================================ */
+
+static Particle gParticles[MAX_PARTICLES];
+
+void Render_particlesInit(void)
+{
+    memset(gParticles, 0, sizeof(gParticles));
+}
+
+void Render_particlesUpdate(int deltaMs)
+{
+    int i;
+    for (i = 0; i < MAX_PARTICLES; i++) {
+        Particle *p = &gParticles[i];
+        if (!p->active) continue;
+        float dt = deltaMs / 1000.0f;
+        p->x += p->vx * dt;
+        p->y += p->vy * dt;
+        p->lifeMs -= deltaMs;
+        if (p->lifeMs <= 0) { p->active = false; continue; }
+        if (p->lifeMs < 500 && p->radius > 1) {
+            p->radius = (p->radius * p->lifeMs) / 500;
+            if (p->radius < 1) p->radius = 1;
+        }
+    }
+}
+
+void Render_particlesDraw(void)
+{
+    int i;
+    for (i = 0; i < MAX_PARTICLES; i++) {
+        Particle *p = &gParticles[i];
+        if (!p->active) continue;
+        setfillcolor(p->color);
+        solidcircle((int)p->x, (int)p->y, p->radius);
+    }
+}
+
+void Render_spawnParticles(int screenX, int screenY, int count,
+    COLORREF color, int lifeMs)
+{
+    int i;
+    for (i = 0; i < MAX_PARTICLES && count > 0; i++) {
+        if (!gParticles[i].active) {
+            gParticles[i].active = true;
+            gParticles[i].x = (float)screenX;
+            gParticles[i].y = (float)screenY;
+            gParticles[i].vx = (float)((rand() % 160) - 80);
+            gParticles[i].vy = (float)((rand() % 160) - 80);
+            gParticles[i].lifeMs = lifeMs + rand() % 300;
+            gParticles[i].color = color;
+            gParticles[i].radius = 2 + rand() % 4;
+            count--;
+        }
+    }
 }

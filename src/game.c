@@ -18,6 +18,10 @@ typedef struct StepPlan {
     bool shieldUsed;
 } StepPlan;
 
+static int gPerfAccumMs = 0;
+static int gPerfFrameCount = 0;
+static bool gUseParticles = true;
+
 static bool posEquals(Pos a, Pos b)
 {
     return a.row == b.row && a.col == b.col;
@@ -1414,6 +1418,16 @@ void Game_update(GameState *state, int deltaMs)
     if (state->result != RESULT_RUNNING) {
         return;
     }
+
+    gPerfAccumMs += deltaMs;
+    gPerfFrameCount++;
+    if (gPerfAccumMs >= 10000) {
+        int avgMs = gPerfAccumMs / gPerfFrameCount;
+        gUseParticles = (avgMs <= 40);
+        gPerfAccumMs = 0;
+        gPerfFrameCount = 0;
+    }
+
     if (deltaMs > 250) {
         deltaMs = 250;
     }
@@ -1799,4 +1813,9 @@ const BorderSource *Game_getBorderSources(const GameState *state)
 RandomEventType Game_getActiveEvent(const GameState *state)
 {
     return state->event.activeEvent;
+}
+
+bool Game_isUsingParticles(void)
+{
+    return gUseParticles;
 }

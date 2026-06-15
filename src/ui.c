@@ -280,6 +280,7 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
             playPendingSounds(state);
         }
 
+        Render_particlesUpdate(deltaMs);
         Render_drawGame(render, state, paused, waitingForStart);
         Sleep(10);
     }

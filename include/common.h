@@ -1,6 +1,7 @@
 #ifndef BUPT_SNAKE_COMMON_H
 #define BUPT_SNAKE_COMMON_H
 
+#include <windows.h>
 #include <stdbool.h>
 
 #define DEFAULT_MAP_SIZE 20
@@ -12,6 +13,24 @@
 #define BOARD_LEFT 24
 #define BOARD_TOP 56
 #define SIDE_PANEL_WIDTH 280
+
+/* UI 配色系统 — 清爽现代暗色 */
+#define COLOR_BG         RGB(26, 31, 43)
+#define COLOR_CARD       RGB(38, 45, 58)
+#define COLOR_CARD_HOVER RGB(48, 56, 70)
+#define COLOR_BOARD      RGB(42, 48, 64)
+#define COLOR_WALL_COLOR RGB(58, 64, 80)
+#define COLOR_ACCENT     RGB(88, 166, 255)
+#define COLOR_POSITIVE   RGB(124, 255, 107)
+#define COLOR_DANGER     RGB(255, 64, 64)
+#define COLOR_WARNING    RGB(255, 200, 55)
+#define COLOR_TEXT       RGB(232, 236, 240)
+#define COLOR_TEXT_DIM   RGB(106, 116, 132)
+#define COLOR_SCORE      RGB(255, 202, 99)
+#define COLOR_BORDER     RGB(64, 76, 90)
+#define COLOR_PANEL      RGB(38, 45, 58)
+#define COLOR_GRID       RGB(50, 58, 72)
+
 #define WINDOW_WIDTH (BOARD_LEFT * 2 + BOARD_PIXEL_SIZE + SIDE_PANEL_WIDTH)
 #define WINDOW_HEIGHT (BOARD_TOP + BOARD_PIXEL_SIZE + 24)
 
@@ -173,6 +192,17 @@ typedef struct RandomEventState {
     int borderFlashMs;
 } RandomEventState;
 
+#define MAX_PARTICLES 200
+
+typedef struct Particle {
+    bool active;
+    float x, y;
+    float vx, vy;
+    int lifeMs;
+    COLORREF color;
+    int radius;
+} Particle;
+
 typedef struct GameConfig {
     GameMode mode;
     MapVariant variant;
@@ -214,6 +244,7 @@ typedef struct GameState {
     int soundEventCount;
     char statusText[128];
     RandomEventState event;
+    Particle particles[MAX_PARTICLES];
 } GameState;
 
 const char *Common_modeName(GameMode mode);
