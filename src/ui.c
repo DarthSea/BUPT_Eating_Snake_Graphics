@@ -1,8 +1,10 @@
 #include <windows.h>
+#include <xinput.h>
 
 #include "audio.h"
 #include "game.h"
 #include "input.h"
+#include "input_gamepad.h"
 #include "render.h"
 #include "ui.h"
 
@@ -64,6 +66,38 @@ bool Ui_chooseVariant(InputContext *input, MapVariant *variant)
 
         Sleep(16);
     }
+}
+
+bool Ui_chooseControls(InputContext *input, RenderContext *render, GameConfig *config)
+{
+    int p1Sel = (int)config->p1ControlMethod;
+    int p2Sel = (int)config->p2ControlMethod;
+
+    for (;;) {
+        MenuInput menu;
+
+        Input_updateMouse();
+        Input_updateGamepads();
+
+        /* P1 输入 */
+        Input_readMenu(input, &menu);
+        if (menu.move != 0) p1Sel = (p1Sel + menu.move + 5) % 5;
+        if (menu.confirm) break;
+
+        /* P2 输入：方向键 */
+        {
+            Direction p2dir = Input_readPlayer2Direction();
+            if (p2dir == DIR_UP) p2Sel = (p2Sel - 1 + 5) % 5;
+            if (p2dir == DIR_DOWN) p2Sel = (p2Sel + 1) % 5;
+        }
+
+        Render_drawControlSelect(render, p1Sel, p2Sel, config);
+        Sleep(16);
+    }
+
+    config->p1ControlMethod = (ControlMethod)p1Sel;
+    config->p2ControlMethod = (ControlMethod)p2Sel;
+    return true;
 }
 
 bool Ui_chooseDifficulty(InputContext *input, AiDifficulty *difficulty)
@@ -208,6 +242,72 @@ static void playPendingSounds(GameState *state)
     }
 }
 
+static void computeViewport(RenderContext *render, GameState *state,
+    int *outStartRow, int *outStartCol, int *outCellSize)
+{
+    int mapSize = Game_validMapSize(state->config.mapSize);
+    int cellSize = Render_cellSizeForMap(render, mapSize);
+    int visibleCells = render->boardPixelSize / cellSize;
+    if (visibleCells > mapSize) visibleCells = mapSize;
+    if (visibleCells < 1) visibleCells = 1;
+
+    if (state->player.length > 0) {
+        Pos head = state->player.body[0];
+        int startRow = head.row - visibleCells / 2;
+        int startCol = head.col - visibleCells / 2;
+        if (startRow < 0) startRow = 0;
+        if (startRow + visibleCells > mapSize) startRow = mapSize - visibleCells;
+        if (startRow < 0) startRow = 0;
+        if (startCol < 0) startCol = 0;
+        if (startCol + visibleCells > mapSize) startCol = mapSize - visibleCells;
+        if (startCol < 0) startCol = 0;
+        *outStartRow = startRow;
+        *outStartCol = startCol;
+    } else {
+        *outStartRow = 0;
+        *outStartCol = 0;
+    }
+    *outCellSize = cellSize;
+}
+
+static Direction readP1Direction(GameState *state, RenderContext *render)
+{
+    if (state->config.p1ControlMethod == CONTROL_MOUSE) {
+        int startRow, startCol, cellSize;
+        computeViewport(render, state, &startRow, &startCol, &cellSize);
+        Pos head;
+        head.row = state->player.length > 0 ? state->player.body[0].row : 0;
+        head.col = state->player.length > 0 ? state->player.body[0].col : 0;
+        return Input_readMouseDirection(head, startRow, startCol, cellSize);
+    } else if (state->config.p1ControlMethod == CONTROL_GAMEPAD_1) {
+        return Input_gamepadDirection(0);
+    } else if (state->config.p1ControlMethod == CONTROL_GAMEPAD_2) {
+        return Input_gamepadDirection(1);
+    } else {
+        return Input_readPlayerDirection();
+    }
+}
+
+static Direction readP2Direction(GameState *state, RenderContext *render)
+{
+    if (state->config.p2ControlMethod == CONTROL_MOUSE) {
+        int startRow, startCol, cellSize;
+        computeViewport(render, state, &startRow, &startCol, &cellSize);
+        Pos head;
+        head.row = state->ai.length > 0 ? state->ai.body[0].row : 0;
+        head.col = state->ai.length > 0 ? state->ai.body[0].col : 0;
+        return Input_readMouseDirection(head, startRow, startCol, cellSize);
+    } else if (state->config.p2ControlMethod == CONTROL_GAMEPAD_1) {
+        return Input_gamepadDirection(0);
+    } else if (state->config.p2ControlMethod == CONTROL_GAMEPAD_2) {
+        return Input_gamepadDirection(1);
+    } else if (state->config.p2ControlMethod == CONTROL_KEYBOARD_ARROWS) {
+        return Input_readPlayer2Direction();
+    } else {
+        return Input_readPlayerDirection();
+    }
+}
+
 static bool runOneRound(InputContext *input, RenderContext *render, GameState *state)
 {
     bool paused = false;
@@ -223,9 +323,13 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
         MenuInput menu;
 
         lastTick = now;
-        dir = Input_readPlayerDirection();
+
+        Input_updateMouse();
+        Input_updateGamepads();
+
+        dir = readP1Direction(state, render);
         if (isMulti) {
-            dir2 = Input_readPlayer2Direction();
+            dir2 = readP2Direction(state, render);
         } else {
             dir2 = DIR_NONE;
         }
@@ -265,6 +369,34 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
         if (isMulti && !waitingForStart && menu.p2Fire) {
             Game_player2FireArrow(state);
             playPendingSounds(state);
+        }
+        /* 手柄 RB 射箭 P1 */
+        if (!waitingForStart
+            && state->config.p1ControlMethod >= CONTROL_GAMEPAD_1) {
+            int slot = (int)(state->config.p1ControlMethod - CONTROL_GAMEPAD_1);
+            if (Input_gamepadButtonPressed(slot, XINPUT_GAMEPAD_RIGHT_SHOULDER)) {
+                Game_playerFireArrow(state);
+                playPendingSounds(state);
+            }
+        }
+        /* 手柄 RB 射箭 P2 */
+        if (!waitingForStart && isMulti
+            && state->config.p2ControlMethod >= CONTROL_GAMEPAD_1) {
+            int slot = (int)(state->config.p2ControlMethod - CONTROL_GAMEPAD_1);
+            if (Input_gamepadButtonPressed(slot, XINPUT_GAMEPAD_RIGHT_SHOULDER)) {
+                Game_player2FireArrow(state);
+                playPendingSounds(state);
+            }
+        }
+        /* 鼠标左键射箭 */
+        if (!waitingForStart && Input_mouseLeftClicked()) {
+            if (state->config.p1ControlMethod == CONTROL_MOUSE) {
+                Game_playerFireArrow(state);
+                playPendingSounds(state);
+            } else if (isMulti && state->config.p2ControlMethod == CONTROL_MOUSE) {
+                Game_player2FireArrow(state);
+                playPendingSounds(state);
+            }
         }
         if (!isMulti && !waitingForStart && menu.speedUp) {
             Game_adjustSpeed(state, 1);

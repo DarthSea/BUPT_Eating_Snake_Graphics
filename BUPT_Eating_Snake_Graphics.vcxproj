@@ -79,7 +79,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Xinput.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8388608</StackReserveSize>
     </Link>
     <PostBuildEvent>
@@ -101,7 +101,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Xinput.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8388608</StackReserveSize>
     </Link>
     <PostBuildEvent>
@@ -119,7 +119,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Xinput.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8388608</StackReserveSize>
     </Link>
     <PostBuildEvent>
@@ -141,7 +141,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Xinput.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8388608</StackReserveSize>
     </Link>
     <PostBuildEvent>
@@ -156,6 +156,7 @@
     <ClInclude Include="include\input.h" />
     <ClInclude Include="include\render.h" />
     <ClInclude Include="include\ui.h" />
+    <ClInclude Include="include\input_gamepad.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\audio.c" />
@@ -166,6 +167,7 @@
     <ClCompile Include="src\main.c" />
     <ClCompile Include="src\render_easyx.c" />
     <ClCompile Include="src\ui.c" />
+    <ClCompile Include="src\input_gamepad.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="tools\build_design_doc.py" />

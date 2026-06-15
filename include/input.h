@@ -27,4 +27,11 @@ Direction Input_readPlayerDirection(void);
 Direction Input_readPlayer2Direction(void);
 void Input_readMenu(InputContext *input, MenuInput *out);
 
+/* Mouse input */
+void Input_updateMouse(void);
+bool Input_mouseInRect(int left, int top, int right, int bottom);
+bool Input_mouseLeftClicked(void);
+bool Input_mouseRightClicked(void);
+Direction Input_readMouseDirection(Pos snakeHead, int startRow, int startCol, int cellSize);
+
 #endif

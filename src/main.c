@@ -74,7 +74,11 @@ int main(void)
             } else if (action == MENU_MULTIPLAYER) {
                 Game_applyModeDefaults(&config, MODE_LOCAL_MULTIPLAYER);
                 config.variant = VARIANT_DIVERSE;
-                /* 跳过变体和难度选择，直接开始 */
+                config.p1ControlMethod = CONTROL_KEYBOARD_WASD;
+                config.p2ControlMethod = CONTROL_KEYBOARD_ARROWS;
+                if (!Ui_chooseControls(&input, &render, &config)) {
+                    continue;
+                }
                 Render_loadSkin(&render, skinId);
                 Game_init(state, &config);
                 Ui_runGame(&input, &render, state);

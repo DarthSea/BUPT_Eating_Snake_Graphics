@@ -76,6 +76,14 @@ typedef enum AiDifficulty {
     AI_HARD
 } AiDifficulty;
 
+typedef enum ControlMethod {
+    CONTROL_KEYBOARD_WASD = 0,
+    CONTROL_KEYBOARD_ARROWS,
+    CONTROL_MOUSE,
+    CONTROL_GAMEPAD_1,
+    CONTROL_GAMEPAD_2
+} ControlMethod;
+
 typedef enum DisplayResolution {
     RESOLUTION_HD = 0,
     RESOLUTION_HD_PLUS,
@@ -221,6 +229,8 @@ typedef struct GameConfig {
     bool enableStepGrowth;
     bool musicEnabled;
     bool soundEnabled;
+    ControlMethod p1ControlMethod;
+    ControlMethod p2ControlMethod;
 } GameConfig;
 
 typedef struct GameState {

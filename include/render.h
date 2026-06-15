@@ -62,6 +62,8 @@ void Render_drawSettings(const GameConfig *config, int selectedRow);
 void Render_drawGame(RenderContext *render, const GameState *state,
     bool paused, bool waitingForStart);
 void Render_drawGameOver(const GameState *state, int selectedAction);
+void Render_drawControlSelect(RenderContext *render, int p1Sel, int p2Sel, const GameConfig *config);
+int Render_cellSizeForMap(const RenderContext *render, int mapSize);
 
 /* Particle system */
 void Render_particlesInit(void);

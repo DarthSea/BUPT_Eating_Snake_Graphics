@@ -238,7 +238,7 @@ static void applyNativeWindowMode(bool fullscreen, int clientWidth, int clientHe
     }
 }
 
-static int cellSizeForMap(const RenderContext *render, int mapSize)
+int Render_cellSizeForMap(const RenderContext *render, int mapSize)
 {
     int cellSize;
     int minimumCellSize = 1;
@@ -272,7 +272,7 @@ static int visibleCellsForMap(const RenderContext *render, int mapSize, int cell
 
 static int boardSizeForMap(const RenderContext *render, int mapSize)
 {
-    int cellSize = cellSizeForMap(render, mapSize);
+    int cellSize = Render_cellSizeForMap(render, mapSize);
 
     return visibleCellsForMap(render, mapSize, cellSize) * cellSize;
 }
@@ -865,7 +865,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     bool paused, bool waitingForStart)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
-    int cellSize = cellSizeForMap(render, mapSize);
+    int cellSize = Render_cellSizeForMap(render, mapSize);
     int visibleCells = visibleCellsForMap(render, mapSize, cellSize);
     int boardSize = boardSizeForMap(render, mapSize);
     Pos focus = state->player.length > 0 ? state->player.body[0] : state->ai.body[0];
@@ -1176,6 +1176,72 @@ void Render_drawGameOver(const GameState *state, int selectedAction)
     }
     drawSmallButton(0, selectedAction == 0, _T("重新开始"), 2);
     drawSmallButton(1, selectedAction == 1, _T("返回菜单"), 2);
+    FlushBatchDraw();
+}
+
+void Render_drawControlSelect(RenderContext *render, int p1Sel, int p2Sel, const GameConfig *config)
+{
+    static const TCHAR *CONTROL_NAMES[] = {
+        _T("键盘 WASD"),
+        _T("键盘 方向键"),
+        _T("鼠标"),
+        _T("手柄 1"),
+        _T("手柄 2")
+    };
+    int i;
+    int leftColX = gWindowWidth / 2 - 210 - 16;
+    int rightColX = gWindowWidth / 2 + 16;
+
+    (void)render;
+    (void)config;
+
+    cleardevice();
+    setfillcolor(COLOR_BG);
+    solidrectangle(0, 0, gWindowWidth, gWindowHeight);
+    drawCenteredText(0, 48, gWindowWidth, 100, _T("选择操控方式"), 38, COLOR_TEXT);
+    drawCenteredText(0, 110, gWindowWidth, 140,
+        _T("W/S 切换 P1，方向键 切换 P2，Enter 确认"), 18, COLOR_TEXT_DIM);
+
+    /* P1 column */
+    drawCenteredText(leftColX, 150, leftColX + 210, 180, _T("玩家一"), 24, COLOR_ACCENT);
+    for (i = 0; i < 5; i++) {
+        int x = leftColX;
+        int y = 195 + i * 52;
+        int w = 210;
+        int h = 42;
+        bool selected = (i == p1Sel);
+
+        drawRoundedRect(x, y, x + w, y + h, 8,
+            selected ? COLOR_CARD_HOVER : COLOR_CARD,
+            selected ? COLOR_ACCENT : COLOR_BORDER);
+        if (selected) {
+            setfillcolor(COLOR_ACCENT);
+            solidrectangle(x, y, x + 3, y + h);
+        }
+        drawCenteredText(x, y, x + w, y + h, CONTROL_NAMES[i], 20,
+            selected ? COLOR_ACCENT : COLOR_TEXT);
+    }
+
+    /* P2 column */
+    drawCenteredText(rightColX, 150, rightColX + 210, 180, _T("玩家二"), 24, COLOR_POSITIVE);
+    for (i = 0; i < 5; i++) {
+        int x = rightColX;
+        int y = 195 + i * 52;
+        int w = 210;
+        int h = 42;
+        bool selected = (i == p2Sel);
+
+        drawRoundedRect(x, y, x + w, y + h, 8,
+            selected ? COLOR_CARD_HOVER : COLOR_CARD,
+            selected ? COLOR_ACCENT : COLOR_BORDER);
+        if (selected) {
+            setfillcolor(COLOR_POSITIVE);
+            solidrectangle(x, y, x + 3, y + h);
+        }
+        drawCenteredText(x, y, x + w, y + h, CONTROL_NAMES[i], 20,
+            selected ? COLOR_POSITIVE : COLOR_TEXT);
+    }
+
     FlushBatchDraw();
 }
 
