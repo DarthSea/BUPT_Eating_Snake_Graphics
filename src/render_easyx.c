@@ -321,6 +321,7 @@ static void drawTextAt(int x, int y, const TCHAR *text, int size, COLORREF color
     _tcscpy_s(lf.lfFaceName, 32, _T("Microsoft YaHei"));
     settextstyle(&lf);
     settextcolor(color);
+    setbkmode(TRANSPARENT);
     outtextxy(x, y, text);
 }
 
@@ -335,18 +336,19 @@ static void drawCenteredText(int left, int top, int right, int bottom,
     _tcscpy_s(lf.lfFaceName, 32, _T("Microsoft YaHei"));
     settextstyle(&lf);
     settextcolor(color);
+    setbkmode(TRANSPARENT);
     width = textwidth(text);
     height = textheight(text);
     outtextxy(left + (right - left - width) / 2,
         top + (bottom - top - height) / 2, text);
 }
 
-/* 模拟圆角矩形：中心矩形 + 四角圆形 */
+/* 模拟圆角矩形：中心矩形 + 四角圆形，扁平无边线 */
 static void drawRoundedRect(int left, int top, int right, int bottom, int radius,
     COLORREF fill, COLORREF border)
 {
+    (void)border; /* 扁平风格不用边线 */
     setfillcolor(fill);
-    setlinecolor(border);
     /* 主体 */
     solidrectangle(left + radius, top, right - radius, bottom);
     solidrectangle(left, top + radius, right, bottom - radius);
@@ -355,15 +357,6 @@ static void drawRoundedRect(int left, int top, int right, int bottom, int radius
     solidcircle(right - radius, top + radius, radius);
     solidcircle(left + radius, bottom - radius, radius);
     solidcircle(right - radius, bottom - radius, radius);
-    /* 外框（近似） */
-    rectangle(left + radius, top, right - radius, bottom);
-    rectangle(left, top + radius, right, bottom - radius);
-    line(left + radius, top, right - radius, top);
-    line(left + radius, bottom, right - radius, bottom);
-    arc(left, top, left + radius * 2, top + radius * 2, 1.57f, 3.14f);
-    arc(right - radius * 2, top, right, top + radius * 2, 0.0f, 1.57f);
-    arc(left, bottom - radius * 2, left + radius * 2, bottom, 3.14f, 4.71f);
-    arc(right - radius * 2, bottom - radius * 2, right, bottom, 4.71f, 6.28f);
 }
 
 static void drawMenuButton(int index, int selected, const TCHAR *text)
