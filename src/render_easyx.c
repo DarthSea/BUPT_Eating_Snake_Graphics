@@ -315,7 +315,11 @@ static void setFont(int size)
 
 static void drawTextAt(int x, int y, const TCHAR *text, int size, COLORREF color)
 {
-    setFont(size);
+    LOGFONT lf = { 0 };
+    lf.lfHeight = size;
+    lf.lfQuality = CLEARTYPE_QUALITY;
+    _tcscpy_s(lf.lfFaceName, 32, _T("Microsoft YaHei"));
+    settextstyle(&lf);
     settextcolor(color);
     outtextxy(x, y, text);
 }
@@ -325,13 +329,41 @@ static void drawCenteredText(int left, int top, int right, int bottom,
 {
     int width;
     int height;
-
-    setFont(size);
+    LOGFONT lf = { 0 };
+    lf.lfHeight = size;
+    lf.lfQuality = CLEARTYPE_QUALITY;
+    _tcscpy_s(lf.lfFaceName, 32, _T("Microsoft YaHei"));
+    settextstyle(&lf);
     settextcolor(color);
     width = textwidth(text);
     height = textheight(text);
     outtextxy(left + (right - left - width) / 2,
         top + (bottom - top - height) / 2, text);
+}
+
+/* 模拟圆角矩形：中心矩形 + 四角圆形 */
+static void drawRoundedRect(int left, int top, int right, int bottom, int radius,
+    COLORREF fill, COLORREF border)
+{
+    setfillcolor(fill);
+    setlinecolor(border);
+    /* 主体 */
+    solidrectangle(left + radius, top, right - radius, bottom);
+    solidrectangle(left, top + radius, right, bottom - radius);
+    /* 四角 */
+    solidcircle(left + radius, top + radius, radius);
+    solidcircle(right - radius, top + radius, radius);
+    solidcircle(left + radius, bottom - radius, radius);
+    solidcircle(right - radius, bottom - radius, radius);
+    /* 外框（近似） */
+    rectangle(left + radius, top, right - radius, bottom);
+    rectangle(left, top + radius, right, bottom - radius);
+    line(left + radius, top, right - radius, top);
+    line(left + radius, bottom, right - radius, bottom);
+    arc(left, top, left + radius * 2, top + radius * 2, 1.57f, 3.14f);
+    arc(right - radius * 2, top, right, top + radius * 2, 0.0f, 1.57f);
+    arc(left, bottom - radius * 2, left + radius * 2, bottom, 3.14f, 4.71f);
+    arc(right - radius * 2, bottom - radius * 2, right, bottom, 4.71f, 6.28f);
 }
 
 static void drawMenuButton(int index, int selected, const TCHAR *text)
@@ -342,10 +374,9 @@ static void drawMenuButton(int index, int selected, const TCHAR *text)
     int top = 190 + index * 58;
     bool isSelected = index == selected;
 
-    setfillcolor(isSelected ? COLOR_CARD_HOVER : COLOR_CARD);
-    setlinecolor(isSelected ? COLOR_ACCENT : COLOR_BORDER);
-    solidrectangle(left, top, left + width, top + height);
-    rectangle(left, top, left + width, top + height);
+    drawRoundedRect(left, top, left + width, top + height, 8,
+        isSelected ? COLOR_CARD_HOVER : COLOR_CARD,
+        isSelected ? COLOR_ACCENT : COLOR_BORDER);
     if (isSelected) {
         setfillcolor(COLOR_ACCENT);
         solidrectangle(left, top, left + 3, top + height);
@@ -363,10 +394,9 @@ static void drawSmallButton(int index, bool selected, const TCHAR *text, int cou
     int left = (gWindowWidth - total) / 2 + index * (width + gap);
     int top = 330;
 
-    setfillcolor(selected ? COLOR_CARD_HOVER : COLOR_CARD);
-    setlinecolor(selected ? COLOR_ACCENT : COLOR_BORDER);
-    solidrectangle(left, top, left + width, top + height);
-    rectangle(left, top, left + width, top + height);
+    drawRoundedRect(left, top, left + width, top + height, 8,
+        selected ? COLOR_CARD_HOVER : COLOR_CARD,
+        selected ? COLOR_ACCENT : COLOR_BORDER);
     if (selected) {
         setfillcolor(COLOR_ACCENT);
         solidrectangle(left, top, left + 3, top + height);
@@ -382,10 +412,9 @@ static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TC
     int width = gWindowWidth - left * 2;
     int height = 48;
 
-    setfillcolor(selected ? COLOR_CARD_HOVER : COLOR_CARD);
-    setlinecolor(selected ? COLOR_ACCENT : COLOR_BORDER);
-    solidrectangle(left, top, left + width, top + height);
-    rectangle(left, top, left + width, top + height);
+    drawRoundedRect(left, top, left + width, top + height, 8,
+        selected ? COLOR_CARD_HOVER : COLOR_CARD,
+        selected ? COLOR_ACCENT : COLOR_BORDER);
     if (selected) {
         setfillcolor(COLOR_ACCENT);
         solidrectangle(left, top, left + 3, top + height);
@@ -961,7 +990,9 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     drawBoardGrid(render, visibleCells, cellSize);
 
     /* Death flash overlay */
-    if (state->result != RESULT_RUNNING && gDeathFlashMs == 0) {
+    if (state->result == RESULT_RUNNING) {
+        gDeathFlashMs = 0;  /* 新游戏开始时重置 */
+    } else if (gDeathFlashMs == 0) {
         gDeathFlashMs = 900;
     }
     if (gDeathFlashMs > 0) {

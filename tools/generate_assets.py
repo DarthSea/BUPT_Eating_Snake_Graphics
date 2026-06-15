@@ -8,8 +8,8 @@ SIZE = 32
 
 SKINS = {
     "default": {
-        "ground": (69, 126, 78),
-        "ground2": (78, 140, 87),
+        "ground": (42, 48, 64),
+        "ground2": (50, 56, 74),
         "wall": (92, 95, 98),
         "wall2": (69, 72, 76),
         "obstacle": (104, 75, 55),
