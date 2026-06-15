@@ -20,12 +20,15 @@ static int wrapIndex(int value, int count)
     return value;
 }
 
-MenuAction Ui_runWelcome(InputContext *input)
+MenuAction Ui_runWelcome(InputContext *input, RenderContext *render)
 {
     int selected = 0;
 
     for (;;) {
         MenuInput menu;
+
+        Input_updateMouse();
+        Input_updateGamepads();
 
         Render_drawWelcome(selected);
         Input_readMenu(input, &menu);
@@ -39,16 +42,44 @@ MenuAction Ui_runWelcome(InputContext *input)
             return MENU_EXIT;
         }
 
+        /* 鼠标 hover */
+        {
+            int btnLeft = (render->windowWidth - 390) / 2;
+            for (int i = 0; i < 7; i++) {
+                int btnTop = 190 + i * 58;
+                if (Input_mouseInRect(btnLeft, btnTop, btnLeft + 390, btnTop + 50)) {
+                    selected = i;
+                }
+            }
+            if (Input_mouseLeftClicked()) return (MenuAction)selected;
+        }
+
+        /* 手柄 */
+        {
+            Direction gpadDir = Input_gamepadConnected(0)
+                ? Input_gamepadDirection(0) : DIR_NONE;
+            if (gpadDir == DIR_UP) selected = wrapIndex(selected - 1, 7);
+            if (gpadDir == DIR_DOWN) selected = wrapIndex(selected + 1, 7);
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)
+                || Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_START)) {
+                return (MenuAction)selected;
+            }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return MENU_EXIT;
+        }
+
         Sleep(16);
     }
 }
 
-bool Ui_chooseVariant(InputContext *input, MapVariant *variant)
+bool Ui_chooseVariant(InputContext *input, RenderContext *render, MapVariant *variant)
 {
     int selected = (int)(*variant);
 
     for (;;) {
         MenuInput menu;
+
+        Input_updateMouse();
+        Input_updateGamepads();
 
         Render_drawVariantMenu((MapVariant)selected);
         Input_readMenu(input, &menu);
@@ -62,6 +93,35 @@ bool Ui_chooseVariant(InputContext *input, MapVariant *variant)
         }
         if (menu.cancel) {
             return false;
+        }
+
+        /* 鼠标 hover */
+        {
+            int total = 2 * 260 + 1 * 24;
+            int baseLeft = (render->windowWidth - total) / 2;
+            for (int i = 0; i < 2; i++) {
+                int btnLeft = baseLeft + i * (260 + 24);
+                if (Input_mouseInRect(btnLeft, 330, btnLeft + 260, 330 + 56)) {
+                    selected = i;
+                }
+            }
+            if (Input_mouseLeftClicked()) {
+                *variant = (MapVariant)selected;
+                return true;
+            }
+        }
+
+        /* 手柄 */
+        {
+            Direction gpadDir = Input_gamepadConnected(0)
+                ? Input_gamepadDirection(0) : DIR_NONE;
+            if (gpadDir == DIR_LEFT) selected = wrapIndex(selected - 1, 2);
+            if (gpadDir == DIR_RIGHT) selected = wrapIndex(selected + 1, 2);
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
+                *variant = (MapVariant)selected;
+                return true;
+            }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
         }
 
         Sleep(16);
@@ -100,12 +160,65 @@ bool Ui_chooseControls(InputContext *input, RenderContext *render, GameConfig *c
     return true;
 }
 
-bool Ui_chooseDifficulty(InputContext *input, AiDifficulty *difficulty)
+bool Ui_chooseControlsSingle(InputContext *input, RenderContext *render, GameConfig *config)
+{
+    int sel = (int)config->p1ControlMethod;
+
+    for (;;) {
+        MenuInput menu;
+
+        Input_updateMouse();
+        Input_updateGamepads();
+
+        Render_drawControlSelectSingle(render, sel);
+
+        /* 键盘 */
+        Input_readMenu(input, &menu);
+        if (menu.move != 0) sel = (sel + menu.move + 5) % 5;
+        if (menu.confirm) { config->p1ControlMethod = (ControlMethod)sel; return true; }
+        if (menu.cancel) return false;
+
+        /* 鼠标 hover */
+        {
+            int colX = (render->windowWidth - 210) / 2;
+            for (int i = 0; i < 5; i++) {
+                int y = 195 + i * 52;
+                if (Input_mouseInRect(colX, y, colX + 210, y + 42)) {
+                    sel = i;
+                }
+            }
+            if (Input_mouseLeftClicked()) {
+                config->p1ControlMethod = (ControlMethod)sel;
+                return true;
+            }
+        }
+
+        /* 游戏手柄 */
+        {
+            Direction gpadDir = Input_gamepadConnected(0)
+                ? Input_gamepadDirection(0) : DIR_NONE;
+            if (gpadDir == DIR_UP) sel = (sel - 1 + 5) % 5;
+            if (gpadDir == DIR_DOWN) sel = (sel + 1) % 5;
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
+                config->p1ControlMethod = (ControlMethod)sel;
+                return true;
+            }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
+        }
+
+        Sleep(16);
+    }
+}
+
+bool Ui_chooseDifficulty(InputContext *input, RenderContext *render, AiDifficulty *difficulty)
 {
     int selected = (int)(*difficulty);
 
     for (;;) {
         MenuInput menu;
+
+        Input_updateMouse();
+        Input_updateGamepads();
 
         Render_drawDifficultyMenu((AiDifficulty)selected);
         Input_readMenu(input, &menu);
@@ -121,6 +234,35 @@ bool Ui_chooseDifficulty(InputContext *input, AiDifficulty *difficulty)
             return false;
         }
 
+        /* 鼠标 hover */
+        {
+            int total = 3 * 260 + 2 * 24;
+            int baseLeft = (render->windowWidth - total) / 2;
+            for (int i = 0; i < 3; i++) {
+                int btnLeft = baseLeft + i * (260 + 24);
+                if (Input_mouseInRect(btnLeft, 330, btnLeft + 260, 330 + 56)) {
+                    selected = i;
+                }
+            }
+            if (Input_mouseLeftClicked()) {
+                *difficulty = (AiDifficulty)selected;
+                return true;
+            }
+        }
+
+        /* 手柄 */
+        {
+            Direction gpadDir = Input_gamepadConnected(0)
+                ? Input_gamepadDirection(0) : DIR_NONE;
+            if (gpadDir == DIR_LEFT) selected = wrapIndex(selected - 1, 3);
+            if (gpadDir == DIR_RIGHT) selected = wrapIndex(selected + 1, 3);
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
+                *difficulty = (AiDifficulty)selected;
+                return true;
+            }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
+        }
+
         Sleep(16);
     }
 }
@@ -128,17 +270,21 @@ bool Ui_chooseDifficulty(InputContext *input, AiDifficulty *difficulty)
 bool Ui_chooseSkin(InputContext *input, RenderContext *render, int *skinId)
 {
     int selected = *skinId;
+    int count = Render_skinCount();
 
     for (;;) {
         MenuInput menu;
 
+        Input_updateMouse();
+        Input_updateGamepads();
+
         Render_drawSkinMenu(selected);
         Input_readMenu(input, &menu);
         if (menu.move != 0) {
-            selected = wrapIndex(selected + menu.move, Render_skinCount());
+            selected = wrapIndex(selected + menu.move, count);
         }
         if (menu.left || menu.right) {
-            selected = wrapIndex(selected + (menu.left ? -1 : 1), Render_skinCount());
+            selected = wrapIndex(selected + (menu.left ? -1 : 1), count);
         }
         if (menu.confirm) {
             *skinId = selected;
@@ -147,6 +293,36 @@ bool Ui_chooseSkin(InputContext *input, RenderContext *render, int *skinId)
         }
         if (menu.cancel) {
             return false;
+        }
+
+        /* 鼠标 hover（使用菜单按钮位置） */
+        {
+            int btnLeft = (render->windowWidth - 390) / 2;
+            for (int i = 0; i < count; i++) {
+                int btnTop = 190 + i * 58;
+                if (Input_mouseInRect(btnLeft, btnTop, btnLeft + 390, btnTop + 50)) {
+                    selected = i;
+                }
+            }
+            if (Input_mouseLeftClicked()) {
+                *skinId = selected;
+                Render_loadSkin(render, selected);
+                return true;
+            }
+        }
+
+        /* 手柄 */
+        {
+            Direction gpadDir = Input_gamepadConnected(0)
+                ? Input_gamepadDirection(0) : DIR_NONE;
+            if (gpadDir == DIR_UP) selected = wrapIndex(selected - 1, count);
+            if (gpadDir == DIR_DOWN) selected = wrapIndex(selected + 1, count);
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
+                *skinId = selected;
+                Render_loadSkin(render, selected);
+                return true;
+            }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
         }
 
         Sleep(16);
@@ -190,6 +366,9 @@ bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *sett
         MenuInput menu;
         int step;
 
+        Input_updateMouse();
+        Input_updateGamepads();
+
         Render_drawSettings(settings, selectedRow);
         Input_readMenu(input, &menu);
         if (menu.move != 0) {
@@ -197,6 +376,19 @@ bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *sett
         }
 
         step = menu.left ? -1 : (menu.right ? 1 : 0);
+
+        /* 手柄左右切换设置值 */
+        {
+            Direction gpadDir = Input_gamepadConnected(0)
+                ? Input_gamepadDirection(0) : DIR_NONE;
+            if (gpadDir == DIR_LEFT) step = -1;
+            if (gpadDir == DIR_RIGHT) step = 1;
+            if (gpadDir == DIR_UP) selectedRow = wrapIndex(selectedRow - 1, 6);
+            if (gpadDir == DIR_DOWN) selectedRow = wrapIndex(selectedRow + 1, 6);
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) return true;
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return true;
+        }
+
         if (step != 0) {
             if (selectedRow == 0) {
                 settings->enableStepGrowth = !settings->enableStepGrowth;
@@ -217,6 +409,17 @@ bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *sett
             } else if (selectedRow == 5) {
                 settings->soundEnabled = !settings->soundEnabled;
                 Audio_setSoundEnabled(settings->soundEnabled);
+            }
+        }
+
+        /* 鼠标 hover */
+        {
+            int rowWidth = render->windowWidth - 420;
+            for (int i = 0; i < 6; i++) {
+                int rowTop = 200 + i * 62;
+                if (Input_mouseInRect(210, rowTop, 210 + rowWidth, rowTop + 48)) {
+                    selectedRow = i;
+                }
             }
         }
 
@@ -334,22 +537,52 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
             dir2 = DIR_NONE;
         }
         if (waitingForStart) {
+            bool p1Started = false;
+            bool p2Started = false;
+
+            /* P1 开始条件 */
+            if (state->config.p1ControlMethod == CONTROL_KEYBOARD_WASD
+                || state->config.p1ControlMethod == CONTROL_KEYBOARD_ARROWS) {
+                if (dir != DIR_NONE) p1Started = true;
+            }
+            if (state->config.p1ControlMethod == CONTROL_MOUSE) {
+                if (Input_mouseLeftClicked()) p1Started = true;
+            }
+            if (state->config.p1ControlMethod >= CONTROL_GAMEPAD_1) {
+                int slot = (int)(state->config.p1ControlMethod - CONTROL_GAMEPAD_1);
+                if (Input_gamepadButtonPressed(slot, XINPUT_GAMEPAD_RIGHT_SHOULDER)
+                    || Input_gamepadDirection(slot) != DIR_NONE) {
+                    p1Started = true;
+                }
+            }
+
+            /* P2 开始条件 */
             if (isMulti) {
-                if (dir != DIR_NONE && dir2 != DIR_NONE) {
-                    waitingForStart = false;
-                    Game_preparePlayerStart(state, dir);
-                    Game_prepareP2Start(state, dir2);
-                    Game_setPlayerDirection(state, dir);
-                    Game_setP2Direction(state, dir2);
-                    Audio_playEvent(SOUND_START);
+                if (state->config.p2ControlMethod == CONTROL_KEYBOARD_WASD
+                    || state->config.p2ControlMethod == CONTROL_KEYBOARD_ARROWS) {
+                    if (dir2 != DIR_NONE) p2Started = true;
                 }
-            } else {
-                if (dir != DIR_NONE) {
-                    waitingForStart = false;
-                    Game_preparePlayerStart(state, dir);
-                    Game_setPlayerDirection(state, dir);
-                    Audio_playEvent(SOUND_START);
+                if (state->config.p2ControlMethod == CONTROL_MOUSE) {
+                    if (Input_mouseLeftClicked()) p2Started = true;
                 }
+                if (state->config.p2ControlMethod >= CONTROL_GAMEPAD_1) {
+                    int slot = (int)(state->config.p2ControlMethod - CONTROL_GAMEPAD_1);
+                    if (Input_gamepadButtonPressed(slot, XINPUT_GAMEPAD_RIGHT_SHOULDER)
+                        || Input_gamepadDirection(slot) != DIR_NONE) {
+                        p2Started = true;
+                    }
+                }
+            }
+
+            bool started = isMulti ? (p1Started && p2Started) : p1Started;
+
+            if (started) {
+                waitingForStart = false;
+                Game_preparePlayerStart(state, dir != DIR_NONE ? dir : DIR_RIGHT);
+                if (isMulti) Game_prepareP2Start(state, dir2 != DIR_NONE ? dir2 : DIR_LEFT);
+                Game_setPlayerDirection(state, dir != DIR_NONE ? dir : DIR_RIGHT);
+                if (isMulti) Game_setP2Direction(state, dir2 != DIR_NONE ? dir2 : DIR_LEFT);
+                Audio_playEvent(SOUND_START);
             }
         } else {
             Game_setPlayerDirection(state, dir);
@@ -434,6 +667,9 @@ bool Ui_runGame(InputContext *input, RenderContext *render, GameState *state)
         for (;;) {
             MenuInput menu;
 
+            Input_updateMouse();
+            Input_updateGamepads();
+
             Render_drawGameOver(state, selectedAction);
             Input_readMenu(input, &menu);
             if (menu.move != 0 || menu.left || menu.right) {
@@ -446,6 +682,43 @@ bool Ui_runGame(InputContext *input, RenderContext *render, GameState *state)
             }
             if (menu.cancel || (menu.confirm && selectedAction == 1)) {
                 return true;
+            }
+
+            /* 鼠标 hover */
+            {
+                int total = 2 * 260 + 1 * 24;
+                int baseLeft = (render->windowWidth - total) / 2;
+                for (int i = 0; i < 2; i++) {
+                    int btnLeft = baseLeft + i * (260 + 24);
+                    if (Input_mouseInRect(btnLeft, 330, btnLeft + 260, 330 + 56)) {
+                        selectedAction = i;
+                    }
+                }
+                if (Input_mouseLeftClicked()) {
+                    if (selectedAction == 0) {
+                        Game_init(state, &config);
+                        break;
+                    } else {
+                        return true;
+                    }
+                }
+            }
+
+            /* 手柄 */
+            {
+                Direction gpadDir = Input_gamepadConnected(0)
+                    ? Input_gamepadDirection(0) : DIR_NONE;
+                if (gpadDir == DIR_LEFT) selectedAction = wrapIndex(selectedAction - 1, 2);
+                if (gpadDir == DIR_RIGHT) selectedAction = wrapIndex(selectedAction + 1, 2);
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
+                    if (selectedAction == 0) {
+                        Game_init(state, &config);
+                        break;
+                    } else {
+                        return true;
+                    }
+                }
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return true;
             }
 
             Sleep(16);

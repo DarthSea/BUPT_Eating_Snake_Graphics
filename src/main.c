@@ -47,7 +47,7 @@ int main(void)
     Input_init(&input);
 
     while (running) {
-        MenuAction action = Ui_runWelcome(&input);
+        MenuAction action = Ui_runWelcome(&input, &render);
 
         if (action == MENU_EXIT) {
             running = false;
@@ -66,11 +66,15 @@ int main(void)
 
             if (action == MENU_SINGLE) {
                 Game_applyModeDefaults(&config, MODE_SINGLE);
+                config.p1ControlMethod = CONTROL_KEYBOARD_WASD;
+                Ui_chooseControlsSingle(&input, &render, &config);
             } else if (action == MENU_AI_BATTLE) {
                 Game_applyModeDefaults(&config, MODE_AI_BATTLE);
             } else if (action == MENU_TIME_CHALLENGE) {
                 Game_applyModeDefaults(&config, MODE_TIME_CHALLENGE);
                 config.variant = VARIANT_DIVERSE;
+                config.p1ControlMethod = CONTROL_KEYBOARD_WASD;
+                Ui_chooseControlsSingle(&input, &render, &config);
             } else if (action == MENU_MULTIPLAYER) {
                 Game_applyModeDefaults(&config, MODE_LOCAL_MULTIPLAYER);
                 config.variant = VARIANT_DIVERSE;
@@ -88,13 +92,13 @@ int main(void)
             }
 
             variant = config.variant;
-            if (!Ui_chooseVariant(&input, &variant)) {
+            if (!Ui_chooseVariant(&input, &render, &variant)) {
                 continue;
             }
             config.variant = variant;
 
             if (config.mode == MODE_AI_BATTLE
-                && !Ui_chooseDifficulty(&input, &config.aiDifficulty)) {
+                && !Ui_chooseDifficulty(&input, &render, &config.aiDifficulty)) {
                 continue;
             }
 
