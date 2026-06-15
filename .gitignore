@@ -24,6 +24,7 @@ snake_crash.log
 
 # Claude Code local state
 .claude/
+.superpowers/
 
 # Compiled object files
 *.o
