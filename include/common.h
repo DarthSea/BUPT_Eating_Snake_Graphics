@@ -28,7 +28,8 @@
 #define COLOR_TEXT_DIM   RGB(106, 116, 132)
 #define COLOR_SCORE      RGB(255, 202, 99)
 #define COLOR_BORDER     RGB(64, 76, 90)
-#define COLOR_PANEL      RGB(38, 45, 58)
+#define COLOR_PANEL      RGB(22, 27, 38)
+#define COLOR_SHADOW     RGB(12, 15, 22)
 #define COLOR_GRID       RGB(50, 58, 72)
 
 #define WINDOW_WIDTH (BOARD_LEFT * 2 + BOARD_PIXEL_SIZE + SIDE_PANEL_WIDTH)
