@@ -810,9 +810,27 @@ static void drawTexture(const RenderContext *render, TextureId id, int x, int y,
 static void drawBoardBackground(const RenderContext *render, int mapSize)
 {
     int boardSize = boardSizeForMap(render, mapSize);
+    const TextureSlot *slot = &render->textures[TEX_GROUND];
 
-    setfillcolor(render->textures[TEX_GROUND].fallbackColor);
-    solidrectangle(BOARD_LEFT, BOARD_TOP, BOARD_LEFT + boardSize, BOARD_TOP + boardSize);
+    if (slot->loaded) {
+        /* 平铺地面贴图 */
+        int texW = render->textureCellSize;
+        int texH = render->textureCellSize;
+        int row, col;
+        int rows = (boardSize + texH - 1) / texH;
+        int cols = (boardSize + texW - 1) / texW;
+
+        for (row = 0; row < rows; row++) {
+            for (col = 0; col < cols; col++) {
+                int x = BOARD_LEFT + col * texW;
+                int y = BOARD_TOP + row * texH;
+                putimage(x, y, (IMAGE *)&slot->image);
+            }
+        }
+    } else {
+        setfillcolor(slot->fallbackColor);
+        solidrectangle(BOARD_LEFT, BOARD_TOP, BOARD_LEFT + boardSize, BOARD_TOP + boardSize);
+    }
 }
 
 static void drawCell(const RenderContext *render, int row, int col,
