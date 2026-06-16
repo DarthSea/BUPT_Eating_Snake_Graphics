@@ -1146,7 +1146,7 @@ void Render_drawWelcome(int selected)
         _T("本地多人模式")
     };
     static const TCHAR *SUB_OPTIONS[] = {
-        _T("更换时装"), _T("设置"), _T("退出游戏")
+        _T("更改地图样式"), _T("设置"), _T("退出游戏")
     };
     int i;
 
@@ -1214,7 +1214,7 @@ void Render_drawSkinMenu(int selectedSkin)
     updateMenuBgSnakes(16);
     cleardevice();
     drawMenuBackground();
-    drawCenteredText(0, 110, gWindowWidth, 165, _T("更换时装"), 40, COLOR_TEXT);
+    drawCenteredText(0, 110, gWindowWidth, 165, _T("更改地图样式"), 40, COLOR_TEXT);
     for (i = 0; i < Render_skinCount(); i++) {
         drawMenuButton(i, selectedSkin, Render_skinDisplayName(i));
     }
@@ -1285,6 +1285,51 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     solidrectangle(0, 0, render->windowWidth, render->windowHeight);
 
     drawBoardBackground(render, mapSize);
+
+    /* 霓虹夜景灯效 — 在地面层绘制，不遮挡道具/蛇 */
+    if (render->skinId == 1) { /* neon */
+        static int neonTimer = 0;
+        int neonR[4] = {255, 80, 230, 60};
+        int neonG[4] = {80, 230, 60, 200};
+        int neonB[4] = {100, 80, 240, 255};
+        neonTimer += 16;
+        int phase = (neonTimer / 600) % 4;
+        int i;
+
+        /* 四角灯 */
+        int corners[4][2] = {
+            {BOARD_LEFT + 4, BOARD_TOP + 4},
+            {BOARD_LEFT + boardSize - 4, BOARD_TOP + 4},
+            {BOARD_LEFT + 4, BOARD_TOP + boardSize - 4},
+            {BOARD_LEFT + boardSize - 4, BOARD_TOP + boardSize - 4}
+        };
+        /* 四边中点灯 */
+        int edges[4][2] = {
+            {BOARD_LEFT + boardSize/2, BOARD_TOP + 4},
+            {BOARD_LEFT + boardSize/2, BOARD_TOP + boardSize - 4},
+            {BOARD_LEFT + 4, BOARD_TOP + boardSize/2},
+            {BOARD_LEFT + boardSize - 4, BOARD_TOP + boardSize/2}
+        };
+        /* 中心灯 */
+        int cx = BOARD_LEFT + boardSize/2;
+        int cy = BOARD_TOP + boardSize/2;
+
+        for (i = 0; i < 4; i++) {
+            COLORREF neon = RGB(neonR[(phase+i)%4], neonG[(phase+i)%4], neonB[(phase+i)%4]);
+            setfillcolor(neon);
+            /* 四角 */
+            solidcircle(corners[i][0], corners[i][1], 3 + (i%2));
+            /* 四边中点 */
+            solidcircle(edges[i][0], edges[i][1], 2 + (i%3));
+        }
+        /* 中心十字灯 */
+        setfillcolor(RGB(neonR[phase], neonG[phase], neonB[phase]));
+        solidcircle(cx, cy, 4);
+        solidcircle(cx - 10, cy, 2);
+        solidcircle(cx + 10, cy, 2);
+        solidcircle(cx, cy - 10, 2);
+        solidcircle(cx, cy + 10, 2);
+    }
 
     /* 轰炸区地面染色：每个区画一个整矩形，O(1) 而非逐格绘制 */
     if (state->event.activeEvent == EVENT_BOMBARDMENT) {

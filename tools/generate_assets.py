@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "assets"
 SIZE = 32
+CURRENT_STYLE = "default"
 
 
 SKINS = {
@@ -70,13 +71,48 @@ SKINS = {
 }
 
 
-def tile_base(colors):
+def tile_base(colors, style="default"):
     image = Image.new("RGB", (SIZE, SIZE), colors["ground"])
     draw = ImageDraw.Draw(image)
-    for y in range(0, SIZE, 8):
-        for x in range(0, SIZE, 8):
-            if (x // 8 + y // 8) % 2 == 0:
-                draw.rectangle([x, y, x + 7, y + 7], fill=colors["ground2"])
+
+    if style == "default":
+        # 森林草丛纹理：短竖线模拟草叶
+        import random as _r
+        for _ in range(40):
+            bx = _r.randint(1, SIZE - 2)
+            by = _r.randint(1, SIZE - 2)
+            gh = _r.randint(2, 5)
+            draw.line([(bx, by), (bx, by + gh)], fill=colors["ground2"], width=1)
+        for y in range(0, SIZE, 4):
+            for x in range(0, SIZE, 4):
+                if (x // 4 + y // 4) % 3 == 0:
+                    draw.point((x, y), fill=(colors["ground2"][0] + 15, colors["ground2"][1] + 20, colors["ground2"][2] + 10))
+
+    elif style == "neon":
+        # 金属色泽：交叉斜线网格 + 暗色基底
+        for y in range(0, SIZE, 2):
+            for x in range(0, SIZE, 2):
+                if (x + y) % 6 == 0:
+                    draw.point((x, y), fill=(60, 65, 85))
+        for d in range(0, SIZE, 12):
+            draw.line([(d, 0), (0, d)], fill=(45, 52, 72), width=1)
+            draw.line([(SIZE - d, 0), (SIZE, d)], fill=(45, 52, 72), width=1)
+        # 中心微光
+        draw.ellipse([12, 12, 20, 20], outline=(55, 62, 82), width=1)
+
+    elif style == "ice":
+        # 冰块纹理：多边形裂缝 + 浅色基底
+        import random as _r2
+        draw.rectangle([0, 0, SIZE - 1, SIZE - 1], outline=(170, 210, 225), width=1)
+        for _ in range(6):
+            x1, y1 = _r2.randint(4, SIZE - 4), _r2.randint(4, SIZE - 4)
+            x2, y2 = x1 + _r2.randint(-8, 8), y1 + _r2.randint(-8, 8)
+            draw.line([(x1, y1), (x2, y2)], fill=(240, 250, 255), width=1)
+        # 冰晶反光点
+        for _ in range(8):
+            px, py = _r2.randint(2, SIZE - 2), _r2.randint(2, SIZE - 2)
+            draw.point((px, py), fill=(255, 255, 255))
+
     return image
 
 
@@ -99,7 +135,7 @@ def draw_wall(colors):
 
 
 def draw_obstacle(colors):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     draw.polygon([(7, 25), (12, 9), (20, 6), (27, 23), (19, 28)], fill=colors["obstacle"])
     draw.line([(12, 10), (16, 18), (22, 14)], fill=(70, 50, 40), width=2)
@@ -107,7 +143,7 @@ def draw_obstacle(colors):
 
 
 def draw_food(colors, key):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     color = colors[key]
     if key == "bonus":
@@ -127,7 +163,7 @@ def draw_food(colors, key):
 
 
 def draw_trap(colors):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     draw.rectangle([5, 20, 27, 27], fill=colors["trap"])
     for x in range(7, 26, 6):
@@ -136,7 +172,7 @@ def draw_trap(colors):
 
 
 def draw_shield(colors):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     draw.polygon([(16, 5), (25, 9), (23, 22), (16, 28), (9, 22), (7, 9)], fill=colors["shield"])
     draw.line([(16, 8), (16, 25)], fill=(230, 255, 240), width=2)
@@ -144,7 +180,7 @@ def draw_shield(colors):
 
 
 def draw_battle_shield(colors):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     draw.polygon([(16, 4), (26, 8), (25, 20), (16, 29), (7, 20), (6, 8)], fill=colors["shield"])
     draw.polygon([(16, 8), (22, 11), (21, 19), (16, 25), (11, 19), (10, 11)], fill=(35, 58, 70))
@@ -153,7 +189,7 @@ def draw_battle_shield(colors):
 
 
 def draw_bow(colors):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     draw.arc([4, 4, 28, 28], 70, 290, fill=colors["bow"], width=4)
     draw.line([(17, 6), (17, 26)], fill=(245, 235, 210), width=1)
@@ -163,7 +199,7 @@ def draw_bow(colors):
 
 
 def draw_spike(colors):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     draw.rectangle([5, 22, 27, 27], fill=colors["trap"])
     for x in range(6, 25, 7):
@@ -173,7 +209,7 @@ def draw_spike(colors):
 
 
 def draw_clock(colors):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     draw.ellipse([6, 6, 26, 26], fill=colors["clock"], outline=(235, 240, 255), width=2)
     draw.line([(16, 16), (16, 9)], fill=(245, 245, 255), width=2)
@@ -183,7 +219,7 @@ def draw_clock(colors):
 
 
 def draw_snake(colors, primary_key, secondary_key, head):
-    image = tile_base(colors)
+    image = tile_base(colors, CURRENT_STYLE)
     draw = ImageDraw.Draw(image)
     primary = colors[primary_key]
     secondary = colors[secondary_key]
@@ -199,7 +235,9 @@ def draw_snake(colors, primary_key, secondary_key, head):
 
 
 def generate_skin(folder, colors):
-    save_tile(folder, "ground.png", tile_base(colors))
+    global CURRENT_STYLE
+    CURRENT_STYLE = folder
+    save_tile(folder, "ground.png", tile_base(colors, folder))
     save_tile(folder, "wall.png", draw_wall(colors))
     save_tile(folder, "obstacle.png", draw_obstacle(colors))
     save_tile(folder, "food.png", draw_food(colors, "food"))
