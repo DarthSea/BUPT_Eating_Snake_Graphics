@@ -1270,16 +1270,14 @@ void Render_drawSettings(const GameConfig *config, int selectedRow)
 
     _stprintf_s(value, 64, _T("%s"), config->enableStepGrowth ? _T("开启") : _T("关闭"));
     drawSettingsRow(0, selectedRow == 0, _T("N 步自动增长"), value);
-    _stprintf_s(value, 64, _T("%d x %d"), config->mapSize, config->mapSize);
-    drawSettingsRow(1, selectedRow == 1, _T("地图尺寸"), value);
     _stprintf_s(value, 64, _T("%s"), Render_resolutionDisplayName(config->resolution));
-    drawSettingsRow(2, selectedRow == 2, _T("窗口分辨率"), value);
+    drawSettingsRow(1, selectedRow == 1, _T("窗口分辨率"), value);
     _stprintf_s(value, 64, _T("%s"), config->fullscreen ? _T("开启") : _T("关闭"));
-    drawSettingsRow(3, selectedRow == 3, _T("全屏显示"), value);
+    drawSettingsRow(2, selectedRow == 2, _T("全屏显示"), value);
     _stprintf_s(value, 64, _T("%s"), config->musicEnabled ? _T("开启") : _T("关闭"));
-    drawSettingsRow(4, selectedRow == 4, _T("背景音乐"), value);
+    drawSettingsRow(3, selectedRow == 3, _T("背景音乐"), value);
     _stprintf_s(value, 64, _T("%s"), config->soundEnabled ? _T("开启") : _T("关闭"));
-    drawSettingsRow(5, selectedRow == 5, _T("游戏音效"), value);
+    drawSettingsRow(4, selectedRow == 4, _T("游戏音效"), value);
 
     FlushBatchDraw();
 }

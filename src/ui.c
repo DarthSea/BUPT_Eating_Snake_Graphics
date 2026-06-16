@@ -426,7 +426,7 @@ bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *sett
         Render_drawSettings(settings, selectedRow);
         Input_readMenu(input, &menu);
         if (menu.move != 0) {
-            selectedRow = wrapIndex(selectedRow + menu.move, 6);
+            selectedRow = wrapIndex(selectedRow + menu.move, 5);
         }
 
         step = menu.left ? -1 : (menu.right ? 1 : 0);
@@ -450,17 +450,15 @@ bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *sett
                     ? DEFAULT_GROWTH_INTERVAL
                     : 0;
             } else if (selectedRow == 1) {
-                settings->mapSize = nextMapSize(settings->mapSize, step == 0 ? 1 : step);
-            } else if (selectedRow == 2) {
                 settings->resolution = nextResolution(settings->resolution, step);
                 Render_applyDisplayMode(render, settings->resolution, settings->fullscreen);
-            } else if (selectedRow == 3) {
+            } else if (selectedRow == 2) {
                 settings->fullscreen = !settings->fullscreen;
                 Render_applyDisplayMode(render, settings->resolution, settings->fullscreen);
-            } else if (selectedRow == 4) {
+            } else if (selectedRow == 3) {
                 settings->musicEnabled = !settings->musicEnabled;
                 Audio_setMusicEnabled(settings->musicEnabled);
-            } else if (selectedRow == 5) {
+            } else if (selectedRow == 4) {
                 settings->soundEnabled = !settings->soundEnabled;
                 Audio_setSoundEnabled(settings->soundEnabled);
             }

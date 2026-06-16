@@ -1038,10 +1038,10 @@ void Game_applyModeDefaults(GameConfig *config, GameMode mode)
     config->growthInterval = config->enableStepGrowth ? DEFAULT_GROWTH_INTERVAL : 0;
 
     if (mode == MODE_SINGLE) {
-        config->moveIntervalMs = 140;
+        config->moveIntervalMs = 115;
         config->timeLimitSeconds = 0;
     } else if (mode == MODE_AI_BATTLE) {
-        config->moveIntervalMs = 130;
+        config->moveIntervalMs = 110;
         config->timeLimitSeconds = 0;
     } else if (mode == MODE_TIME_CHALLENGE) {
         config->moveIntervalMs = 115;
