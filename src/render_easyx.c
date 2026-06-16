@@ -359,9 +359,98 @@ static void drawRoundedRect(int left, int top, int right, int bottom, int radius
     solidcircle(right - radius, bottom - radius, radius);
 }
 
+/* 文字发光效果 — 四角偏移暗色光晕 */
+static void drawTextGlow(int x, int y, const TCHAR *text, int size,
+    COLORREF color, COLORREF glowColor)
+{
+    LOGFONT lf = { 0 };
+    lf.lfHeight = size;
+    lf.lfQuality = CLEARTYPE_QUALITY;
+    _tcscpy_s(lf.lfFaceName, 32, _T("Microsoft YaHei"));
+    settextstyle(&lf);
+    setbkmode(TRANSPARENT);
+
+    settextcolor(glowColor);
+    outtextxy(x - 1, y - 1, text);
+    outtextxy(x + 1, y - 1, text);
+    outtextxy(x - 1, y + 1, text);
+    outtextxy(x + 1, y + 1, text);
+
+    settextcolor(color);
+    outtextxy(x, y, text);
+}
+
+/* 文字描边效果 — 8方向偏移描边 */
+static void drawTextOutline(int x, int y, const TCHAR *text, int size,
+    COLORREF color, COLORREF outlineColor)
+{
+    LOGFONT lf = { 0 };
+    lf.lfHeight = size;
+    lf.lfQuality = CLEARTYPE_QUALITY;
+    _tcscpy_s(lf.lfFaceName, 32, _T("Microsoft YaHei"));
+    settextstyle(&lf);
+    setbkmode(TRANSPARENT);
+
+    settextcolor(outlineColor);
+    {
+        int d;
+        int dirs[8][2] = {{-1,-1},{0,-1},{1,-1},{-1,0},{1,0},{-1,1},{0,1},{1,1}};
+        for (d = 0; d < 8; d++) {
+            outtextxy(x + dirs[d][0], y + dirs[d][1], text);
+        }
+    }
+
+    settextcolor(color);
+    outtextxy(x, y, text);
+}
+
+/* 居中文字 + 发光 */
+static void drawCenteredTextGlow(int left, int top, int right, int bottom,
+    const TCHAR *text, int size, COLORREF color, COLORREF glowColor)
+{
+    int w, h, x, y;
+    LOGFONT lf = { 0 };
+    lf.lfHeight = size;
+    lf.lfQuality = CLEARTYPE_QUALITY;
+    _tcscpy_s(lf.lfFaceName, 32, _T("Microsoft YaHei"));
+    settextstyle(&lf);
+    setbkmode(TRANSPARENT);
+    w = textwidth(text);
+    h = textheight(text);
+    x = left + (right - left - w) / 2;
+    y = top + (bottom - top - h) / 2;
+
+    settextcolor(glowColor);
+    outtextxy(x - 1, y - 1, text);
+    outtextxy(x + 1, y - 1, text);
+    outtextxy(x - 1, y + 1, text);
+    outtextxy(x + 1, y + 1, text);
+
+    settextcolor(color);
+    outtextxy(x, y, text);
+}
+
+/* 道具标签 — 小方框 + 文字 */
+static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color)
+{
+    TCHAR buf[32];
+    int tagW = 54;
+    int tagH = 22;
+
+    setfillcolor(COLOR_BG);
+    solidrectangle(x, y, x + tagW, y + tagH);
+    setlinecolor(COLOR_BORDER);
+    rectangle(x, y, x + tagW, y + tagH);
+
+    _stprintf_s(buf, 32, _T("%s %d"), label, value);
+    drawTextAt(x + 6, y + 3, buf, 11, color);
+}
+
 static void drawMenuButton(int index, int selected, const TCHAR *text)
 {
-    int width = 390;
+    int width = gWindowWidth * 55 / 100;
+    if (width > 500) width = 500;
+    if (width < 280) width = 280;
     int height = 50;
     int left = (gWindowWidth - width) / 2;
     int top = 190 + index * 58;
@@ -380,7 +469,9 @@ static void drawMenuButton(int index, int selected, const TCHAR *text)
 
 static void drawSmallButton(int index, bool selected, const TCHAR *text, int count)
 {
-    int width = 260;
+    int width = gWindowWidth * 27 / 100;
+    if (width > 280) width = 280;
+    if (width < 180) width = 180;
     int height = 56;
     int gap = 24;
     int total = count * width + (count - 1) * gap;
@@ -400,7 +491,9 @@ static void drawSmallButton(int index, bool selected, const TCHAR *text, int cou
 
 static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TCHAR *value)
 {
-    int left = 210;
+    int left = gWindowWidth * 12 / 100;
+    if (left < 120) left = 120;
+    if (left > 260) left = 260;
     int top = 200 + row * 62;
     int width = gWindowWidth - left * 2;
     int height = 48;
@@ -879,7 +972,6 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     static int gScoreBounceMs = 0;
     static int gWarnPulseTimer = 0;
     static int gDeathFlashMs = 0;
-    int scoreFontSize;
 
     /* Score bounce + particle spawn on score change */
     if (state->player.score != gLastScore && gLastScore >= 0) {
@@ -892,7 +984,6 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         }
     }
     gLastScore = state->player.score;
-    scoreFontSize = (gScoreBounceMs > 0) ? 38 : 32;
 
     ensureGameTextureSize(render, cellSize);
     cleardevice();
@@ -999,111 +1090,210 @@ void Render_drawGame(RenderContext *render, const GameState *state,
 
     setfillcolor(COLOR_PANEL);
     solidrectangle(x, BOARD_TOP, render->windowWidth - 24, BOARD_TOP + boardSize);
-    drawTextAt(x + 20, BOARD_TOP + 24, modeText(state->config.mode), 26, COLOR_TEXT);
-    drawTextAt(x + 20, BOARD_TOP + 70, variantText(state->config.variant), 20, COLOR_TEXT_DIM);
-    _stprintf_s(buffer, 128, _T("地图：%d x %d"), mapSize, mapSize);
-    drawTextAt(x + 20, BOARD_TOP + 102, buffer, 18, COLOR_TEXT_DIM);
+    /* ──────────── 卡片化侧栏 ──────────── */
+    {
+        int cardX = x + 8;
+        int cardW = render->windowWidth - 24 - cardX - 8;
+        int cardY = BOARD_TOP + 16;
+        enum { CG = 6 }; /* card gap */
 
-    if (state->event.activeEvent != EVENT_NONE) {
-        const TCHAR *eventName = (state->event.activeEvent == EVENT_BOMBARDMENT)
-            ? _T("事件：地图轰炸") : _T("事件：刀光箭影");
-        int remainSec = (state->event.eventTimerMs + 999) / 1000;
-        if (remainSec < 0) remainSec = 0;
-        _stprintf_s(buffer, 128, _T("%s (%d s)"), eventName, remainSec);
-        drawTextAt(x + 20, BOARD_TOP + 126, buffer, 16, COLOR_WARNING);
-
-        /* Event progress bar */
+        /* === 模式卡片 === */
         {
-            int barX = x + 20;
-            int barY = BOARD_TOP + 148;
-            int barW = render->windowWidth - 24 - barX - 20;
-            int barH = 6;
-            int elapsed = 12000 - state->event.eventTimerMs;
-            if (elapsed < 0) elapsed = 0;
-            int filled = barW * elapsed / 12000;
-            if (filled > barW) filled = barW;
-            COLORREF barColor = (state->event.eventTimerMs < 3000) ? COLOR_DANGER : COLOR_ACCENT;
-            setfillcolor(COLOR_BG);
-            solidrectangle(barX, barY, barX + barW, barY + barH);
-            setfillcolor(barColor);
-            solidrectangle(barX, barY, barX + filled, barY + barH);
+            const int ch = 50;
+            drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+            setfillcolor(COLOR_ACCENT);
+            solidrectangle(cardX, cardY, cardX + 3, cardY + ch);
+            drawTextAt(cardX + 16, cardY + 6, modeText(state->config.mode), 16, COLOR_ACCENT);
+            _stprintf_s(buffer, 128, _T("%s  .  %d x %d"),
+                variantText(state->config.variant), mapSize, mapSize);
+            drawTextAt(cardX + 16, cardY + 28, buffer, 12, COLOR_TEXT_DIM);
+            cardY += ch + CG;
         }
 
-        if (state->event.bombWarning) {
-            gWarnPulseTimer += 16;
-            int warnFontSize = ((gWarnPulseTimer / 500) % 2 == 0) ? 26 : 30;
-            drawCenteredText(x, BOARD_TOP + 160,
-                render->windowWidth - 24, BOARD_TOP + 200,
-                _T("!!! 即将轰炸 !!!"), warnFontSize, COLOR_DANGER);
-        }
-    }
+        /* === 事件卡片（有事件时） === */
+        if (state->event.activeEvent != EVENT_NONE) {
+            const int ch = 54;
+            const TCHAR *eventName = (state->event.activeEvent == EVENT_BOMBARDMENT)
+                ? _T("地图轰炸") : _T("刀光箭影");
+            int remainSec = (state->event.eventTimerMs + 999) / 1000;
+            if (remainSec < 0) remainSec = 0;
 
-    if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
-        /* P1 得分区 */
-        drawTextAt(x + 20, BOARD_TOP + 168, _T("玩家一 (WASD)"), 20, COLOR_SCORE);
-        _stprintf_s(buffer, 128, _T("得分：%d"), state->player.score);
-        drawTextAt(x + 20, BOARD_TOP + 198, buffer,
-            gScoreBounceMs > 0 ? 34 : 28, COLOR_SCORE);
-        _stprintf_s(buffer, 128, _T("长度：%d"), state->player.length);
-        drawTextAt(x + 20, BOARD_TOP + 238, buffer, 18, COLOR_TEXT);
-        _stprintf_s(buffer, 128, _T("弓箭：%d  护盾：%d"),
-            state->player.bowArrows, state->player.shieldCharges);
-        drawTextAt(x + 20, BOARD_TOP + 264, buffer, 18, COLOR_TEXT_DIM);
+            drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+            /* 红色边框 */
+            setlinecolor(COLOR_DANGER);
+            rectangle(cardX + 1, cardY + 1, cardX + cardW - 1, cardY + ch - 1);
 
-        /* 分隔线 */
-        setlinecolor(COLOR_BORDER);
-        line(x + 20, BOARD_TOP + 300, x + SIDE_PANEL_WIDTH - 44, BOARD_TOP + 300);
+            _stprintf_s(buffer, 128, _T("%s    %ds"), eventName, remainSec);
+            drawTextAt(cardX + 16, cardY + 6, buffer, 14, COLOR_WARNING);
 
-        /* P2 得分区 */
-        drawTextAt(x + 20, BOARD_TOP + 316, _T("玩家二 (方向键)"), 20, COLOR_POSITIVE);
-        _stprintf_s(buffer, 128, _T("得分：%d"), state->ai.score);
-        drawTextAt(x + 20, BOARD_TOP + 346, buffer, 28, COLOR_POSITIVE);
-        _stprintf_s(buffer, 128, _T("长度：%d"), state->ai.length);
-        drawTextAt(x + 20, BOARD_TOP + 386, buffer, 18, COLOR_TEXT);
-        _stprintf_s(buffer, 128, _T("弓箭：%d  护盾：%d"),
-            state->ai.bowArrows, state->ai.shieldCharges);
-        drawTextAt(x + 20, BOARD_TOP + 412, buffer, 18, COLOR_TEXT_DIM);
+            /* 进度条 */
+            {
+                int barX = cardX + 16;
+                int barY = cardY + 26;
+                int barW = cardW - 32;
+                int barH = 8;
+                int elapsed = 12000 - state->event.eventTimerMs;
+                if (elapsed < 0) elapsed = 0;
+                if (elapsed > 12000) elapsed = 12000;
+                int filled = barW * elapsed / 12000;
+                COLORREF barColor = (state->event.eventTimerMs < 3000)
+                    ? COLOR_DANGER : COLOR_ACCENT;
 
-        /* 剩余时间 */
-        _stprintf_s(buffer, 128, _T("剩余时间：%d s"), state->remainingSeconds);
-        drawTextAt(x + 20, BOARD_TOP + 460, buffer, 22, COLOR_ACCENT);
+                setfillcolor(COLOR_BG);
+                solidrectangle(barX, barY, barX + barW, barY + barH);
+                setfillcolor(barColor);
+                solidrectangle(barX, barY, barX + filled, barY + barH);
+            }
 
-        drawTextAt(x + 20, BOARD_TOP + boardSize - 64, render->skinName, 20, COLOR_TEXT_DIM);
-    } else {
-        _stprintf_s(buffer, 128, _T("速度档：%+d"), state->speedLevel);
-        drawTextAt(x + 20, BOARD_TOP + 130, buffer, 18, COLOR_SCORE);
-        drawTextAt(x + 20, BOARD_TOP + 168, _T("玩家得分"), 20, COLOR_TEXT_DIM);
-        _stprintf_s(buffer, 128, _T("%d"), state->player.score);
-        drawTextAt(x + 20, BOARD_TOP + 196, buffer, scoreFontSize, COLOR_SCORE);
-        _stprintf_s(buffer, 128, _T("长度：%d"), state->player.length);
-        drawTextAt(x + 20, BOARD_TOP + 248, buffer, 20, COLOR_TEXT);
-        _stprintf_s(buffer, 128, _T("弓箭：%d  护盾：%d"),
-            state->player.bowArrows, state->player.shieldCharges);
-        drawTextAt(x + 20, BOARD_TOP + 278, buffer, 18, COLOR_TEXT_DIM);
+            /* 轰炸预警 */
+            if (state->event.bombWarning) {
+                gWarnPulseTimer += 16;
+                int warnSize = ((gWarnPulseTimer / 500) % 2 == 0) ? 14 : 16;
+                drawTextAt(cardX + 16, cardY + 38,
+                    _T("!!!  即将轰炸  !!!"), warnSize, COLOR_DANGER);
+            }
 
-        if (state->config.mode == MODE_AI_BATTLE) {
-            _stprintf_s(buffer, 128, _T("AI 分数：%d"), state->ai.score);
-            drawTextAt(x + 20, BOARD_TOP + 330, buffer, 20, COLOR_DANGER);
-            _stprintf_s(buffer, 128, _T("AI 弓箭：%d  护盾：%d"),
-                state->ai.bowArrows, state->ai.shieldCharges);
-            drawTextAt(x + 20, BOARD_TOP + 360, buffer, 18, COLOR_TEXT_DIM);
-            drawTextAt(x + 20, BOARD_TOP + 392, difficultyText(state->config.aiDifficulty), 20, COLOR_TEXT_DIM);
+            cardY += ch + CG;
         }
 
-        if (state->config.mode == MODE_TIME_CHALLENGE) {
-            _stprintf_s(buffer, 128, _T("剩余时间：%d s"), state->remainingSeconds);
-            drawTextAt(x + 20, BOARD_TOP + 330, buffer, 22, COLOR_ACCENT);
+        if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
+            /* === P1 卡片 === */
+            {
+                const int ch = 76;
+                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                setfillcolor(COLOR_ACCENT);
+                solidrectangle(cardX, cardY + 0, cardX + cardW, cardY + 3);
+
+                drawTextAt(cardX + 16, cardY + 8, _T("玩家一  (WASD)"), 15, COLOR_ACCENT);
+                _stprintf_s(buffer, 128, _T("得分: %d"), state->player.score);
+                drawTextAt(cardX + 16, cardY + 30, buffer, 17, COLOR_SCORE);
+                {
+                    int tY = cardY + 52;
+                    drawTag(cardX + 16, tY, _T("长度"), state->player.length, COLOR_TEXT);
+                    drawTag(cardX + 78, tY, _T("弓箭"), state->player.bowArrows, COLOR_SCORE);
+                    drawTag(cardX + 140, tY, _T("护盾"), state->player.shieldCharges, COLOR_POSITIVE);
+                }
+                cardY += ch + CG;
+            }
+
+            /* === P2 卡片 === */
+            {
+                const int ch = 76;
+                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                setfillcolor(COLOR_POSITIVE);
+                solidrectangle(cardX, cardY + 0, cardX + cardW, cardY + 3);
+
+                drawTextAt(cardX + 16, cardY + 8, _T("玩家二  (方向键)"), 15, COLOR_POSITIVE);
+                _stprintf_s(buffer, 128, _T("得分: %d"), state->ai.score);
+                drawTextAt(cardX + 16, cardY + 30, buffer, 17, COLOR_POSITIVE);
+                {
+                    int tY = cardY + 52;
+                    drawTag(cardX + 16, tY, _T("长度"), state->ai.length, COLOR_TEXT);
+                    drawTag(cardX + 78, tY, _T("弓箭"), state->ai.bowArrows, COLOR_SCORE);
+                    drawTag(cardX + 140, tY, _T("护盾"), state->ai.shieldCharges, COLOR_POSITIVE);
+                }
+                cardY += ch + CG;
+            }
+
+            /* === 时间卡片 === */
+            {
+                const int ch = 36;
+                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                _stprintf_s(buffer, 128, _T("剩余时间: %d s"), state->remainingSeconds);
+                drawTextAt(cardX + 16, cardY + 8, buffer, 17, COLOR_ACCENT);
+                cardY += ch + CG;
+            }
+
+            /* === 底部卡片（锚定底边） === */
+            {
+                const int ch = 52;
+                int bY = BOARD_TOP + boardSize - ch - 12;
+                drawRoundedRect(cardX, bY, cardX + cardW, bY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawTextAt(cardX + 16, bY + 6, render->skinName, 13, COLOR_TEXT_DIM);
+                drawTextAt(cardX + 16, bY + 26,
+                    _T("P1: E 射箭    P2: / 射箭"), 13, COLOR_TEXT_DIM);
+            }
+        } else {
+            /* === 分数卡片 === */
+            {
+                const int ch = 80;
+                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+
+                drawCenteredText(cardX, cardY + 4, cardX + cardW, cardY + 20,
+                    _T("玩家得分"), 11, COLOR_TEXT_DIM);
+
+                _stprintf_s(buffer, 128, _T("%d"), state->player.score);
+                drawCenteredTextGlow(cardX, cardY + 22, cardX + cardW, cardY + 54,
+                    buffer, (gScoreBounceMs > 0) ? 30 : 28,
+                    COLOR_SCORE, COLOR_BG);
+
+                {
+                    int tY = cardY + 56;
+                    int tagW = 54;
+                    int tagArea = cardW - 32;
+                    int gap = (tagArea - tagW * 3) / 2;
+                    if (gap < 4) gap = 4;
+                    drawTag(cardX + 16, tY, _T("长度"), state->player.length, COLOR_TEXT);
+                    drawTag(cardX + 16 + tagW + gap, tY, _T("弓箭"), state->player.bowArrows, COLOR_SCORE);
+                    drawTag(cardX + 16 + (tagW + gap) * 2, tY, _T("护盾"), state->player.shieldCharges, COLOR_POSITIVE);
+                }
+                cardY += ch + CG;
+            }
+
+            /* === 速度档卡片 === */
+            {
+                const int ch = 36;
+                COLORREF spdColor = (state->speedLevel > 0) ? COLOR_POSITIVE
+                    : (state->speedLevel < 0) ? COLOR_DANGER : COLOR_SCORE;
+
+                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawTextAt(cardX + 16, cardY + 8, _T("速度档"), 15, COLOR_TEXT);
+                _stprintf_s(buffer, 128, _T("%+d"), state->speedLevel);
+                drawTextAt(cardX + cardW - 48, cardY + 8, buffer, 15, spdColor);
+                cardY += ch + CG;
+            }
+
+            /* === AI 卡片（AI对战模式） === */
+            if (state->config.mode == MODE_AI_BATTLE) {
+                const int ch = 50;
+                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                setfillcolor(COLOR_DANGER);
+                solidrectangle(cardX, cardY, cardX + 3, cardY + ch);
+
+                _stprintf_s(buffer, 128, _T("AI 得分: %d"), state->ai.score);
+                drawTextAt(cardX + 16, cardY + 8, buffer, 15, COLOR_DANGER);
+                _stprintf_s(buffer, 128, _T("弓箭 %d    护盾 %d    %s"),
+                    state->ai.bowArrows, state->ai.shieldCharges,
+                    difficultyText(state->config.aiDifficulty));
+                drawTextAt(cardX + 16, cardY + 28, buffer, 11, COLOR_TEXT_DIM);
+                cardY += ch + CG;
+            }
+
+            /* === 时间卡片（限时挑战模式） === */
+            if (state->config.mode == MODE_TIME_CHALLENGE) {
+                const int ch = 36;
+                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                _stprintf_s(buffer, 128, _T("剩余时间: %d s"), state->remainingSeconds);
+                drawTextAt(cardX + 16, cardY + 8, buffer, 17, COLOR_ACCENT);
+                cardY += ch + CG;
+            }
+
+            /* === 底部卡片（锚定底边） === */
+            {
+                const int ch = 52;
+                int bY = BOARD_TOP + boardSize - ch - 12;
+                drawRoundedRect(cardX, bY, cardX + cardW, bY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawTextAt(cardX + 16, bY + 6, render->skinName, 13, COLOR_TEXT_DIM);
+
+                if (state->config.mode == MODE_TIME_CHALLENGE) {
+                    drawTextAt(cardX + 16, bY + 26,
+                        _T("E 射箭    1 加速    2 减速"), 13, COLOR_TEXT_DIM);
+                } else {
+                    drawTextAt(cardX + 16, bY + 26,
+                        _T("E 射箭    1 加速    2 减速"), 13, COLOR_TEXT_DIM);
+                }
+            }
         }
-
-        drawTextAt(x + 20, BOARD_TOP + boardSize - 64, render->skinName, 20, COLOR_TEXT_DIM);
-    }
-
-    if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
-        drawTextAt(x + 20, BOARD_TOP + boardSize - 36,
-            _T("P1: E射箭  P2: /射箭"), 16, COLOR_TEXT_DIM);
-    } else {
-        drawTextAt(x + 20, BOARD_TOP + boardSize - 36,
-            _T("E 射箭  1 加速  2 减速"), 17, COLOR_TEXT_DIM);
     }
 
     if (waitingForStart) {
