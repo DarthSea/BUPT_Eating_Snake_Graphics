@@ -9,8 +9,8 @@ CURRENT_STYLE = "default"
 
 SKINS = {
     "default": {
-        "ground": (42, 48, 64),
-        "ground2": (50, 56, 74),
+        "ground": (48, 84, 52),
+        "ground2": (56, 96, 60),
         "wall": (92, 95, 98),
         "wall2": (69, 72, 76),
         "obstacle": (104, 75, 55),

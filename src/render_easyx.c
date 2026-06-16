@@ -33,7 +33,7 @@ static const ResolutionInfo RESOLUTIONS[] = {
 };
 
 static const COLORREF FALLBACK_COLORS[TEX_COUNT] = {
-    COLOR_BOARD,
+    RGB(48, 84, 52),  /* 森林绿地面 */
     COLOR_WALL_COLOR,
     RGB(91, 68, 52),
     RGB(222, 71, 63),
