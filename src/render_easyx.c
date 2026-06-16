@@ -656,85 +656,108 @@ static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color,
     drawTextAt(x + (int)(22 * txtScale), y + (int)(3 * txtScale), buf, (int)(12 * txtScale), color);
 }
 
+/* 菜单缩放因子 */
+static float menuScale(void)
+{
+    float s = gWindowWidth / 1440.0f;
+    if (s < 0.75f) s = 0.75f;
+    if (s > 1.4f) s = 1.4f;
+    return s;
+}
+
 static void drawMenuButton(int index, int selected, const TCHAR *text)
 {
-    int width = gWindowWidth * 55 / 100;
-    if (width > 520) width = 520;
-    if (width < 300) width = 300;
-    int height = 46;
+    float ms = menuScale();
+    int width = (int)(gWindowWidth * 0.50f);
+    if (width > (int)(520 * ms)) width = (int)(520 * ms);
+    if (width < (int)(280 * ms)) width = (int)(280 * ms);
+    int height = (int)(46 * ms);
+    int gap = (int)(8 * ms);
     int left = (gWindowWidth - width) / 2;
-    int top = 200 + index * (height + 8);
+    int top = (int)(180 * ms) + index * (height + gap);
     bool isSelected = index == selected;
+    int r = (int)(6 * ms);
+    int numR = (int)(11 * ms);
 
     /* 卡片背景 */
     if (isSelected) {
-        /* 渐变蓝底 — EasyX用纯色+左边条模拟 */
         setfillcolor(COLOR_MENU_GRAD);
-        solidrectangle(left + 6, top, left + width - 6, top + height);
-        solidrectangle(left, top + 6, left + width, top + height - 6);
-        solidcircle(left + 6, top + 6, 6);
-        solidcircle(left + width - 6, top + 6, 6);
-        solidcircle(left + 6, top + height - 6, 6);
-        solidcircle(left + width - 6, top + height - 6, 6);
-        /* 蓝色描边 */
+        solidrectangle(left + r, top, left + width - r, top + height);
+        solidrectangle(left, top + r, left + width, top + height - r);
+        solidcircle(left + r, top + r, r);
+        solidcircle(left + width - r, top + r, r);
+        solidcircle(left + r, top + height - r, r);
+        solidcircle(left + width - r, top + height - r, r);
         setlinecolor(COLOR_ACCENT);
-        rectangle(left + 6, top, left + width - 6, top + height);
-        rectangle(left, top + 6, left + width, top + height - 6);
+        rectangle(left + r, top, left + width - r, top + height);
+        rectangle(left, top + r, left + width, top + height - r);
     } else {
         setfillcolor(COLOR_MENU_CARD);
-        solidrectangle(left + 6, top, left + width - 6, top + height);
-        solidrectangle(left, top + 6, left + width, top + height - 6);
-        solidcircle(left + 6, top + 6, 6);
-        solidcircle(left + width - 6, top + 6, 6);
-        solidcircle(left + 6, top + height - 6, 6);
-        solidcircle(left + width - 6, top + height - 6, 6);
+        solidrectangle(left + r, top, left + width - r, top + height);
+        solidrectangle(left, top + r, left + width, top + height - r);
+        solidcircle(left + r, top + r, r);
+        solidcircle(left + width - r, top + r, r);
+        solidcircle(left + r, top + height - r, r);
+        solidcircle(left + width - r, top + height - r, r);
     }
 
     /* 圆形编号 */
     {
-        int numX = left + 18;
+        int numX = left + (int)(18 * ms);
         int numY = top + height / 2;
         TCHAR num[4];
         _stprintf_s(num, 4, _T("%d"), index + 1);
         if (isSelected) {
             setfillcolor(COLOR_ACCENT);
-            solidcircle(numX, numY, 11);
-            drawCenteredText(numX - 11, numY - 11, numX + 11, numY + 11,
-                num, 12, RGB(13, 21, 32));
+            solidcircle(numX, numY, numR);
+            drawCenteredText(numX - numR, numY - numR, numX + numR, numY + numR,
+                num, (int)(12 * ms), RGB(13, 21, 32));
         } else {
             setfillcolor(COLOR_MENU_NUM);
-            solidcircle(numX, numY, 11);
-            drawCenteredText(numX - 11, numY - 11, numX + 11, numY + 11,
-                num, 12, COLOR_TEXT_DIM);
+            solidcircle(numX, numY, numR);
+            drawCenteredText(numX - numR, numY - numR, numX + numR, numY + numR,
+                num, (int)(12 * ms), COLOR_TEXT_DIM);
         }
     }
 
     /* 文字 */
-    drawTextAt(left + 42, top + 10, text, 14,
+    drawTextAt(left + (int)(42 * ms), top + (height - (int)(18 * ms))/2,
+        text, (int)(14 * ms),
         isSelected ? COLOR_ACCENT : RGB(192, 200, 212));
 }
 
 static void drawSmallButton(int index, bool selected, const TCHAR *text, int count)
 {
-    int width = gWindowWidth * 25 / 100;
-    if (width > 240) width = 240;
-    if (width < 150) width = 150;
-    int height = 40;
-    int gap = 18;
+    float ms = menuScale();
+    int width = (int)(gWindowWidth * 0.22f);
+    if (width > (int)(220 * ms)) width = (int)(220 * ms);
+    if (width < (int)(130 * ms)) width = (int)(130 * ms);
+    int height = (int)(40 * ms);
+    int gap = (int)(18 * ms);
     int total = count * width + (count - 1) * gap;
     int left = (gWindowWidth - total) / 2 + index * (width + gap);
-    int top = 340;
+    /* 放在主按钮下方：主按钮最后一项底部 + 间距 */
+    int top = (int)(180 * ms) + 4 * ((int)(46 * ms) + (int)(8 * ms)) + (int)(16 * ms);
+    int r = (int)(5 * ms);
 
-    setfillcolor(selected ? COLOR_ACCENT : COLOR_MENU_CARD);
-    solidrectangle(left + 5, top, left + width - 5, top + height);
-    solidrectangle(left, top + 5, left + width, top + height - 5);
-    solidcircle(left + 5, top + 5, 5);
-    solidcircle(left + width - 5, top + 5, 5);
-    solidcircle(left + 5, top + height - 5, 5);
-    solidcircle(left + width - 5, top + height - 5, 5);
+    if (selected) {
+        setfillcolor(index == 2 ? COLOR_MENU_EXIT : COLOR_ACCENT);
+    } else {
+        setfillcolor(COLOR_MENU_CARD);
+    }
+    solidrectangle(left + r, top, left + width - r, top + height);
+    solidrectangle(left, top + r, left + width, top + height - r);
+    solidcircle(left + r, top + r, r);
+    solidcircle(left + width - r, top + r, r);
+    solidcircle(left + r, top + height - r, r);
+    solidcircle(left + width - r, top + height - r, r);
 
-    drawCenteredText(left, top, left + width, top + height, text, 14,
-        selected ? RGB(13, 21, 32) : RGB(136, 148, 164));
+    COLORREF txtColor = selected
+        ? ((index == 2) ? COLOR_DANGER : RGB(13, 21, 32))
+        : RGB(136, 148, 164);
+    if (index == 2 && !selected) txtColor = COLOR_DANGER;
+    drawCenteredText(left, top, left + width, top + height, text,
+        (int)(13 * ms), txtColor);
 }
 
 static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TCHAR *value)
@@ -1353,10 +1376,15 @@ void Render_drawGame(RenderContext *render, const GameState *state,
      * Board HUD overlay
      * ═══════════════════════════════════════════════════════════════ */
 
+    /* ── HUD 缩放（基于棋盘大小） ── */
+    float hudScale = boardSize / 640.0f;
+    if (hudScale < 0.8f) hudScale = 0.8f;
+    if (hudScale > 1.6f) hudScale = 1.6f;
+
     /* ── HUD: 左上角 模式+速度档 ── */
     {
-        int hudX = BOARD_LEFT + 6;
-        int hudY = BOARD_TOP + 6;
+        int hudX = BOARD_LEFT + (int)(6 * hudScale);
+        int hudY = BOARD_TOP + (int)(6 * hudScale);
         TCHAR hudBuf[64];
 
         if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
@@ -1366,17 +1394,18 @@ void Render_drawGame(RenderContext *render, const GameState *state,
                 modeText(state->config.mode), state->speedLevel);
         }
 
-        setFont(14);
+        int hudFont = (int)(18 * hudScale);
+        setFont(hudFont);
         {
-            int txtW = textwidth(hudBuf) + 20;
-            int txtH = 26;
+            int txtW = textwidth(hudBuf) + (int)(24 * hudScale);
+            int txtH = (int)(30 * hudScale);
             setfillcolor(RGB(10, 15, 22));
             solidrectangle(hudX, hudY, hudX + txtW, hudY + txtH);
-            /* 蓝色下划线 */
             setfillcolor(COLOR_ACCENT);
-            solidrectangle(hudX, hudY + txtH - 2, hudX + txtW, hudY + txtH);
+            solidrectangle(hudX, hudY + txtH - (int)(3 * hudScale), hudX + txtW, hudY + txtH);
 
-            drawTextAt(hudX + 10, hudY + 4, hudBuf, 14, COLOR_ACCENT);
+            drawTextAt(hudX + (int)(10 * hudScale), hudY + (int)(4 * hudScale),
+                hudBuf, hudFont, COLOR_ACCENT);
         }
     }
 
@@ -1388,38 +1417,44 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             ? COLOR_DANGER : COLOR_TEXT;
 
         _stprintf_s(timeBuf, 32, _T("%ds"), state->remainingSeconds);
-        setFont(16);
+        int timeFont = (int)(20 * hudScale);
+        setFont(timeFont);
         {
-            int tW = textwidth(timeBuf) + 24;
-            int timeX = BOARD_LEFT + boardSize - tW - 6;
-            int timeY = BOARD_TOP + 6;
+            int tW = textwidth(timeBuf) + (int)(28 * hudScale);
+            int timeX = BOARD_LEFT + boardSize - tW - (int)(6 * hudScale);
+            int timeY = BOARD_TOP + (int)(6 * hudScale);
+            int tH = (int)(30 * hudScale);
 
             setfillcolor(RGB(10, 15, 22));
-            solidrectangle(timeX, timeY, timeX + tW, timeY + 26);
+            solidrectangle(timeX, timeY, timeX + tW, timeY + tH);
             setfillcolor(timeColor);
-            solidrectangle(timeX, timeY + 24, timeX + tW, timeY + 26);
+            solidrectangle(timeX, timeY + tH - (int)(3 * hudScale), timeX + tW, timeY + tH);
 
-            drawTextAt(timeX + 12, timeY + 4, timeBuf, 16, timeColor);
+            drawTextAt(timeX + (int)(12 * hudScale), timeY + (int)(4 * hudScale),
+                timeBuf, timeFont, timeColor);
         }
     }
 
     /* ── HUD: 底部道具状态栏 ── */
     {
-        int barW = 180;
+        int barH = (int)(28 * hudScale);
+        int barW = (int)(220 * hudScale);
         int barX = BOARD_LEFT + (boardSize - barW) / 2;
-        int barY = BOARD_TOP + boardSize - 30;
+        int barY = BOARD_TOP + boardSize - barH - (int)(4 * hudScale);
         int segW = barW / 3;
+        int barFont = (int)(14 * hudScale);
 
         setfillcolor(RGB(10, 15, 22));
-        solidrectangle(barX, barY, barX + barW, barY + 24);
+        solidrectangle(barX, barY, barX + barW, barY + barH);
 
         TCHAR tag[16];
+        int pad = (int)(10 * hudScale);
         _stprintf_s(tag, 16, _T("蛇 %d"), state->player.length);
-        drawTextAt(barX + 10, barY + 4, tag, 11, COLOR_TEXT);
+        drawTextAt(barX + pad, barY + (barH - barFont)/2, tag, barFont, COLOR_TEXT);
         _stprintf_s(tag, 16, _T("弓 %d"), state->player.bowArrows);
-        drawTextAt(barX + segW + 8, barY + 4, tag, 11, COLOR_SCORE);
+        drawTextAt(barX + segW + pad, barY + (barH - barFont)/2, tag, barFont, COLOR_SCORE);
         _stprintf_s(tag, 16, _T("盾 %d"), state->player.shieldCharges);
-        drawTextAt(barX + segW * 2 + 6, barY + 4, tag, 11, COLOR_POSITIVE);
+        drawTextAt(barX + segW*2 + pad, barY + (barH - barFont)/2, tag, barFont, COLOR_POSITIVE);
     }
 
     /* Death flash overlay */
