@@ -529,6 +529,13 @@ static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color,
     solidcircle(x + r, y + tagH - r, r);
     solidcircle(x + tagW - r, y + tagH - r, r);
 
+    /* 边框 */
+    setlinecolor(COLOR_BORDER);
+    line(x + r, y, x + tagW - r, y);
+    line(x + r, y + tagH, x + tagW - r, y + tagH);
+    line(x, y + r, x, y + tagH - r);
+    line(x + tagW, y + r, x + tagW, y + tagH - r);
+
     /* 图标 */
     {
         TagIcon icon;
@@ -1168,6 +1175,79 @@ void Render_drawGame(RenderContext *render, const GameState *state,
 
     drawBoardGrid(render, visibleCells, cellSize);
 
+    /* ═══════════════════════════════════════════════════════════════
+     * Board HUD overlay
+     * ═══════════════════════════════════════════════════════════════ */
+
+    /* ── HUD: 左上角 模式+速度档 ── */
+    {
+        int hudX = BOARD_LEFT + 6;
+        int hudY = BOARD_TOP + 6;
+        TCHAR hudBuf[64];
+
+        if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
+            _stprintf_s(hudBuf, 64, _T("%s"), modeText(state->config.mode));
+        } else {
+            _stprintf_s(hudBuf, 64, _T("%s  %+d"),
+                modeText(state->config.mode), state->speedLevel);
+        }
+
+        setFont(14);
+        {
+            int txtW = textwidth(hudBuf) + 20;
+            int txtH = 26;
+            setfillcolor(RGB(10, 15, 22));
+            solidrectangle(hudX, hudY, hudX + txtW, hudY + txtH);
+            /* 蓝色下划线 */
+            setfillcolor(COLOR_ACCENT);
+            solidrectangle(hudX, hudY + txtH - 2, hudX + txtW, hudY + txtH);
+
+            drawTextAt(hudX + 10, hudY + 4, hudBuf, 14, COLOR_ACCENT);
+        }
+    }
+
+    /* ── HUD: 右上角 剩余时间 ── */
+    if (state->config.mode == MODE_TIME_CHALLENGE
+        || state->config.mode == MODE_LOCAL_MULTIPLAYER) {
+        TCHAR timeBuf[32];
+        COLORREF timeColor = (state->remainingSeconds <= 10 && state->remainingSeconds > 0)
+            ? COLOR_DANGER : COLOR_TEXT;
+
+        _stprintf_s(timeBuf, 32, _T("%ds"), state->remainingSeconds);
+        setFont(16);
+        {
+            int tW = textwidth(timeBuf) + 24;
+            int timeX = BOARD_LEFT + boardSize - tW - 6;
+            int timeY = BOARD_TOP + 6;
+
+            setfillcolor(RGB(10, 15, 22));
+            solidrectangle(timeX, timeY, timeX + tW, timeY + 26);
+            setfillcolor(timeColor);
+            solidrectangle(timeX, timeY + 24, timeX + tW, timeY + 26);
+
+            drawTextAt(timeX + 12, timeY + 4, timeBuf, 16, timeColor);
+        }
+    }
+
+    /* ── HUD: 底部道具状态栏 ── */
+    {
+        int barW = 180;
+        int barX = BOARD_LEFT + (boardSize - barW) / 2;
+        int barY = BOARD_TOP + boardSize - 30;
+        int segW = barW / 3;
+
+        setfillcolor(RGB(10, 15, 22));
+        solidrectangle(barX, barY, barX + barW, barY + 24);
+
+        TCHAR tag[16];
+        _stprintf_s(tag, 16, _T("蛇 %d"), state->player.length);
+        drawTextAt(barX + 10, barY + 4, tag, 11, COLOR_TEXT);
+        _stprintf_s(tag, 16, _T("弓 %d"), state->player.bowArrows);
+        drawTextAt(barX + segW + 8, barY + 4, tag, 11, COLOR_SCORE);
+        _stprintf_s(tag, 16, _T("盾 %d"), state->player.shieldCharges);
+        drawTextAt(barX + segW * 2 + 6, barY + 4, tag, 11, COLOR_POSITIVE);
+    }
+
     /* Death flash overlay */
     if (state->result == RESULT_RUNNING) {
         gDeathFlashMs = 0;  /* 新游戏开始时重置 */
@@ -1362,6 +1442,15 @@ void Render_drawGame(RenderContext *render, const GameState *state,
                     buffer, (gScoreBounceMs > 0) ? (int)(30 * txtScale) : (int)(28 * txtScale),
                     COLOR_SCORE, RGB(60, 50, 0));
 
+                /* 分隔线 */
+                {
+                    int lineY = cardY + (int)(46 * txtScale);
+                    int lineW = (int)(cardW * 0.6f);
+                    int lineX = cardX + (cardW - lineW) / 2;
+                    setlinecolor(COLOR_BORDER);
+                    line(lineX, lineY, lineX + lineW, lineY);
+                }
+
                 {
                     int tY = cardY + (int)(56 * txtScale);
                     int tagW = (int)(54 * txtScale);
@@ -1385,11 +1474,21 @@ void Render_drawGame(RenderContext *render, const GameState *state,
                     : (state->speedLevel < 0) ? COLOR_DANGER : COLOR_SCORE;
 
                 drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
-                drawTextAt(cardX + (int)(16 * txtScale), cardY + (int)(8 * txtScale),
+                drawTextAt(cardX + (int)(14 * txtScale), cardY + (int)(8 * txtScale),
                     _T("速度档"), (int)(15 * txtScale), COLOR_TEXT);
+
                 _stprintf_s(buffer, 128, _T("%+d"), state->speedLevel);
-                drawTextAt(cardX + cardW - (int)(48 * txtScale), cardY + (int)(8 * txtScale),
-                    buffer, (int)(15 * txtScale), spdColor);
+                setFont((int)(15 * txtScale));
+                {
+                    int valW = textwidth(buffer);
+                    drawTextAt(cardX + cardW - valW - (int)(30 * txtScale),
+                        cardY + (int)(8 * txtScale), buffer, (int)(15 * txtScale), spdColor);
+                }
+
+                /* 速度指示方块 */
+                setfillcolor(spdColor);
+                solidrectangle(cardX + cardW - (int)(24 * txtScale), cardY + (int)(10 * txtScale),
+                    cardX + cardW - (int)(16 * txtScale), cardY + (int)(18 * txtScale));
                 cardY += ch + CG;
             }
 
