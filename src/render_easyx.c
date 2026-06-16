@@ -689,9 +689,10 @@ static void drawMenuButton(int index, int selected, const TCHAR *text)
     solidcircle(left + width - r, top + height - r, r);
 
     if (isSelected) {
-        /* 单层描边 — 用 2px 粗线 */
+        /* 圆角描边 */
         setlinecolor(COLOR_ACCENT);
-        rectangle(left + 2, top + 2, left + width - 2, top + height - 2);
+        roundrect(left + 2, top + 2, left + width - 2, top + height - 2,
+            r + 4, r + 4);
     }
 
     /* 圆形编号 */
@@ -773,7 +774,7 @@ static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TC
     solidcircle(left + width - 5, top + height - 5, 5);
     if (selected) {
         setlinecolor(COLOR_ACCENT);
-        rectangle(left + 3, top + 3, left + width - 3, top + height - 3);
+        roundrect(left + 3, top + 3, left + width - 3, top + height - 3, 8, 8);
     }
     drawTextAt(left + 22, top + (height - 22)/2, label, 20, selected ? COLOR_ACCENT : COLOR_TEXT);
     drawTextAt(left + width - (int)(gWindowWidth * 0.18f), top + (height - 22)/2, value, 20, COLOR_SCORE);
