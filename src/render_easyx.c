@@ -455,31 +455,61 @@ static void drawCenteredTextGlow(int left, int top, int right, int bottom,
 /* 道具标签 — 圆角小方块 + 文字 */
 typedef enum { ICON_LENGTH = 0, ICON_ARROW, ICON_SHIELD } TagIcon;
 
-/* 在小标签旁画图标（仅用 EasyX 基础图形） */
+/* 精细像素图标 — 模拟 emoji 风格 */
 static void drawTagIcon(int cx, int cy, int sz, TagIcon icon, COLORREF color)
 {
+    int midY = cy + sz/2;
     setfillcolor(color);
+    setlinecolor(color);
     if (icon == ICON_LENGTH) {
-        /* 蛇身: 横条 + 小圆头 */
-        setfillcolor(color);
-        solidcircle(cx + sz*3/4, cy + sz/2, sz/3);
-        solidrectangle(cx, cy + sz/4, cx + sz*3/4, cy + sz*3/4);
+        /* 🍖 蛇身：四节身体 + 眼睛头 */
+        int segR = sz / 5;
+        solidcircle(cx + sz - segR,    midY, segR);      /* 头 */
+        solidcircle(cx + sz - segR*3,  midY, segR - 1);  /* 段1 */
+        solidcircle(cx + segR*3,       midY, segR - 1);  /* 段2 */
+        solidcircle(cx + segR,         midY, segR - 1);  /* 段3 */
+        /* 眼睛 */
+        setfillcolor(RGB(255,255,255));
+        solidcircle(cx + sz - segR + 1, midY - 1, segR/3);
+        setfillcolor(RGB(20,20,20));
+        solidcircle(cx + sz - segR + 2, midY - 1, segR/5);
     } else if (icon == ICON_ARROW) {
-        /* 箭头: 横线 + 三角 */
-        int mid = cy + sz/2;
-        setfillcolor(color);
-        solidrectangle(cx, mid - sz/6, cx + sz*2/3, mid + sz/6);
-        /* 三角用三根线 */
+        /* 🏹 弓+箭 */
+        int bowX = cx + sz/4;
+        /* 弓弧（圆形边框模拟） */
         setlinecolor(color);
-        line(cx + sz*2/3, mid - sz/3, cx + sz, mid);
-        line(cx + sz*2/3, mid + sz/3, cx + sz, mid);
-        line(cx + sz*2/3, mid - sz/3, cx + sz*2/3, mid + sz/3);
+        arc(bowX - sz/3, cy, bowX + sz/3, cy + sz, 0.0f, 3.14f);
+        arc(bowX - sz/3, cy, bowX + sz/3, cy + sz, 3.14f, 6.28f);
+        /* 弦 */
+        line(bowX, cy + 2, bowX, cy + sz - 2);
+        /* 箭杆 */
+        line(bowX, midY, cx + sz, midY);
+        /* 箭头 */
+        line(cx + sz - 4, midY - 3, cx + sz, midY);
+        line(cx + sz - 4, midY + 3, cx + sz, midY);
+        /* 尾羽 */
+        line(cx + sz/2, midY - 2, cx + sz/2 - 3, midY - 4);
+        line(cx + sz/2, midY + 2, cx + sz/2 - 3, midY + 4);
     } else {
-        /* 护盾: 圆 + 十字 */
-        solidcircle(cx + sz/2, cy + sz/2, sz/3);
+        /* 🛡 盾牌 + 十字 */
+        int shW = sz;
+        int shH = sz;
+        /* 盾体 */
+        {
+            POINT shield[5] = {
+                {cx, cy + shH/6},
+                {cx + shW/2, cy},
+                {cx + shW, cy + shH/6},
+                {cx + shW, cy + shH/2},
+                {cx + shW/2, cy + shH}
+            };
+            setfillcolor(color);
+            solidpolygon(shield, 5);
+        }
+        /* 十字内部 */
         setfillcolor(COLOR_BG);
-        solidrectangle(cx + sz/2 - 1, cy + sz/3, cx + sz/2 + 1, cy + sz*2/3);
-        solidrectangle(cx + sz/3, cy + sz/2 - 1, cx + sz*2/3, cy + sz/2 + 1);
+        solidrectangle(cx + shW*2/5, cy + shH/4, cx + shW*3/5, cy + shH*3/5);
+        solidrectangle(cx + shW/3, cy + shH*2/5, cx + shW*2/3, cy + shH*3/5);
     }
 }
 
