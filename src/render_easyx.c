@@ -343,6 +343,23 @@ static void drawCenteredText(int left, int top, int right, int bottom,
         top + (bottom - top - height) / 2, text);
 }
 
+/* 带阴影的卡片：先画偏移阴影，再画卡片本体 */
+static void drawCardWithShadow(int left, int top, int right, int bottom, int radius,
+    COLORREF fill)
+{
+    /* 阴影：偏移 3px 的深色底 */
+    setfillcolor(RGB(14, 17, 24));
+    solidrectangle(left + 3, top + 3, right + 3, bottom + 3);
+    /* 卡片本体 */
+    setfillcolor(fill);
+    solidrectangle(left + radius, top, right - radius, bottom);
+    solidrectangle(left, top + radius, right, bottom - radius);
+    solidcircle(left + radius, top + radius, radius);
+    solidcircle(right - radius, top + radius, radius);
+    solidcircle(left + radius, bottom - radius, radius);
+    solidcircle(right - radius, bottom - radius, radius);
+}
+
 /* 模拟圆角矩形：中心矩形 + 四角圆形，扁平无边线 */
 static void drawRoundedRect(int left, int top, int right, int bottom, int radius,
     COLORREF fill, COLORREF border)
@@ -363,6 +380,7 @@ static void drawRoundedRect(int left, int top, int right, int bottom, int radius
 static void drawTextGlow(int x, int y, const TCHAR *text, int size,
     COLORREF color, COLORREF glowColor)
 {
+    int r;
     LOGFONT lf = { 0 };
     lf.lfHeight = size;
     lf.lfQuality = CLEARTYPE_QUALITY;
@@ -370,11 +388,13 @@ static void drawTextGlow(int x, int y, const TCHAR *text, int size,
     settextstyle(&lf);
     setbkmode(TRANSPARENT);
 
-    settextcolor(glowColor);
-    outtextxy(x - 1, y - 1, text);
-    outtextxy(x + 1, y - 1, text);
-    outtextxy(x - 1, y + 1, text);
-    outtextxy(x + 1, y + 1, text);
+    /* 多层发光：从大到小递减偏移，产生光晕效果 */
+    int offsets[][2] = {{-3,0},{3,0},{0,-3},{0,3},{-2,-2},{2,-2},{-2,2},{2,2},
+        {-1,-1},{1,-1},{-1,1},{1,1}};
+    for (r = 0; r < 12; r++) {
+        settextcolor(glowColor);
+        outtextxy(x + offsets[r][0], y + offsets[r][1], text);
+    }
 
     settextcolor(color);
     outtextxy(x, y, text);
@@ -408,7 +428,7 @@ static void drawTextOutline(int x, int y, const TCHAR *text, int size,
 static void drawCenteredTextGlow(int left, int top, int right, int bottom,
     const TCHAR *text, int size, COLORREF color, COLORREF glowColor)
 {
-    int w, h, x, y;
+    int w, h, x, y, r;
     LOGFONT lf = { 0 };
     lf.lfHeight = size;
     lf.lfQuality = CLEARTYPE_QUALITY;
@@ -420,30 +440,36 @@ static void drawCenteredTextGlow(int left, int top, int right, int bottom,
     x = left + (right - left - w) / 2;
     y = top + (bottom - top - h) / 2;
 
-    settextcolor(glowColor);
-    outtextxy(x - 1, y - 1, text);
-    outtextxy(x + 1, y - 1, text);
-    outtextxy(x - 1, y + 1, text);
-    outtextxy(x + 1, y + 1, text);
+    /* 多层光晕 */
+    int offsets[][2] = {{-3,0},{3,0},{0,-3},{0,3},{-2,-2},{2,-2},{-2,2},{2,2},
+        {-1,-1},{1,-1},{-1,1},{1,1}};
+    for (r = 0; r < 12; r++) {
+        settextcolor(glowColor);
+        outtextxy(x + offsets[r][0], y + offsets[r][1], text);
+    }
 
     settextcolor(color);
     outtextxy(x, y, text);
 }
 
-/* 道具标签 — 小方框 + 文字 */
+/* 道具标签 — 圆角小方块 + 文字 */
 static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color)
 {
     TCHAR buf[32];
-    int tagW = 54;
-    int tagH = 22;
+    int tagW = 58;
+    int tagH = 24;
+    int r = 5;
 
     setfillcolor(COLOR_BG);
-    solidrectangle(x, y, x + tagW, y + tagH);
-    setlinecolor(COLOR_BORDER);
-    rectangle(x, y, x + tagW, y + tagH);
+    solidrectangle(x + r, y, x + tagW - r, y + tagH);
+    solidrectangle(x, y + r, x + tagW, y + tagH - r);
+    solidcircle(x + r, y + r, r);
+    solidcircle(x + tagW - r, y + r, r);
+    solidcircle(x + r, y + tagH - r, r);
+    solidcircle(x + tagW - r, y + tagH - r, r);
 
     _stprintf_s(buf, 32, _T("%s %d"), label, value);
-    drawTextAt(x + 6, y + 3, buf, 11, color);
+    drawTextAt(x + 8, y + 3, buf, 12, color);
 }
 
 static void drawMenuButton(int index, int selected, const TCHAR *text)
@@ -1100,7 +1126,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         /* === 模式卡片 === */
         {
             const int ch = 50;
-            drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+            drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
             setfillcolor(COLOR_ACCENT);
             solidrectangle(cardX, cardY, cardX + 3, cardY + ch);
             drawTextAt(cardX + 16, cardY + 6, modeText(state->config.mode), 16, COLOR_ACCENT);
@@ -1118,7 +1144,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             int remainSec = (state->event.eventTimerMs + 999) / 1000;
             if (remainSec < 0) remainSec = 0;
 
-            drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+            drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
             /* 红色边框 */
             setlinecolor(COLOR_DANGER);
             rectangle(cardX + 1, cardY + 1, cardX + cardW - 1, cardY + ch - 1);
@@ -1160,7 +1186,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             /* === P1 卡片 === */
             {
                 const int ch = 76;
-                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
                 setfillcolor(COLOR_ACCENT);
                 solidrectangle(cardX, cardY + 0, cardX + cardW, cardY + 3);
 
@@ -1179,7 +1205,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             /* === P2 卡片 === */
             {
                 const int ch = 76;
-                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
                 setfillcolor(COLOR_POSITIVE);
                 solidrectangle(cardX, cardY + 0, cardX + cardW, cardY + 3);
 
@@ -1198,7 +1224,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             /* === 时间卡片 === */
             {
                 const int ch = 36;
-                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
                 _stprintf_s(buffer, 128, _T("剩余时间: %d s"), state->remainingSeconds);
                 drawTextAt(cardX + 16, cardY + 8, buffer, 17, COLOR_ACCENT);
                 cardY += ch + CG;
@@ -1208,7 +1234,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             {
                 const int ch = 52;
                 int bY = BOARD_TOP + boardSize - ch - 12;
-                drawRoundedRect(cardX, bY, cardX + cardW, bY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, bY, cardX + cardW, bY + ch, 6, COLOR_CARD);
                 drawTextAt(cardX + 16, bY + 6, render->skinName, 13, COLOR_TEXT_DIM);
                 drawTextAt(cardX + 16, bY + 26,
                     _T("P1: E 射箭    P2: / 射箭"), 13, COLOR_TEXT_DIM);
@@ -1217,7 +1243,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             /* === 分数卡片 === */
             {
                 const int ch = 80;
-                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
 
                 drawCenteredText(cardX, cardY + 4, cardX + cardW, cardY + 20,
                     _T("玩家得分"), 11, COLOR_TEXT_DIM);
@@ -1225,7 +1251,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
                 _stprintf_s(buffer, 128, _T("%d"), state->player.score);
                 drawCenteredTextGlow(cardX, cardY + 22, cardX + cardW, cardY + 54,
                     buffer, (gScoreBounceMs > 0) ? 30 : 28,
-                    COLOR_SCORE, COLOR_BG);
+                    COLOR_SCORE, RGB(60, 50, 0));
 
                 {
                     int tY = cardY + 56;
@@ -1246,7 +1272,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
                 COLORREF spdColor = (state->speedLevel > 0) ? COLOR_POSITIVE
                     : (state->speedLevel < 0) ? COLOR_DANGER : COLOR_SCORE;
 
-                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
                 drawTextAt(cardX + 16, cardY + 8, _T("速度档"), 15, COLOR_TEXT);
                 _stprintf_s(buffer, 128, _T("%+d"), state->speedLevel);
                 drawTextAt(cardX + cardW - 48, cardY + 8, buffer, 15, spdColor);
@@ -1256,7 +1282,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             /* === AI 卡片（AI对战模式） === */
             if (state->config.mode == MODE_AI_BATTLE) {
                 const int ch = 50;
-                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
                 setfillcolor(COLOR_DANGER);
                 solidrectangle(cardX, cardY, cardX + 3, cardY + ch);
 
@@ -1272,7 +1298,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             /* === 时间卡片（限时挑战模式） === */
             if (state->config.mode == MODE_TIME_CHALLENGE) {
                 const int ch = 36;
-                drawRoundedRect(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
                 _stprintf_s(buffer, 128, _T("剩余时间: %d s"), state->remainingSeconds);
                 drawTextAt(cardX + 16, cardY + 8, buffer, 17, COLOR_ACCENT);
                 cardY += ch + CG;
@@ -1282,7 +1308,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             {
                 const int ch = 52;
                 int bY = BOARD_TOP + boardSize - ch - 12;
-                drawRoundedRect(cardX, bY, cardX + cardW, bY + ch, 6, COLOR_CARD, COLOR_CARD);
+                drawCardWithShadow(cardX, bY, cardX + cardW, bY + ch, 6, COLOR_CARD);
                 drawTextAt(cardX + 16, bY + 6, render->skinName, 13, COLOR_TEXT_DIM);
 
                 if (state->config.mode == MODE_TIME_CHALLENGE) {
