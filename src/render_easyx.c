@@ -1530,13 +1530,61 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         }
     }
 
-    setfillcolor(COLOR_PANEL);
-    solidrectangle(x, BOARD_TOP, render->windowWidth - 24, BOARD_TOP + boardSize);
-
     /* 文字缩放因子：基于面板实际宽度 */
     float txtScale = (float)(render->windowWidth - 24 - x) / 240.0f;
     if (txtScale < 0.75f) txtScale = 0.75f;
     if (txtScale > 1.5f) txtScale = 1.5f;
+
+    /* 多人模式：角标HUD，不画侧栏 */
+    if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
+        /* P1 左上角标 */
+        {
+            int hx = BOARD_LEFT + 6, hy = BOARD_TOP + 6;
+            int hw = (int)(180 * hudScale), hh = (int)(68 * hudScale);
+            setfillcolor(RGB(10, 15, 22));
+            solidrectangle(hx, hy, hx + hw, hy + hh);
+            setfillcolor(COLOR_ACCENT);
+            solidrectangle(hx, hy, hx + hw, hy + 3);
+            drawTextAt(hx + 8, hy + 6, _T("玩家一 (WASD)"), (int)(14*hudScale), COLOR_ACCENT);
+            TCHAR buf[64];
+            _stprintf_s(buf, 64, _T("得分 %d    蛇 %d    弓 %d    盾 %d"),
+                state->player.score, state->player.length, state->player.bowArrows, state->player.shieldCharges);
+            drawTextAt(hx + 8, hy + 30, buf, (int)(12*hudScale), COLOR_TEXT);
+        }
+        /* P2 右上角标 */
+        {
+            int hw = (int)(180 * hudScale), hh = (int)(68 * hudScale);
+            int hx = BOARD_LEFT + boardSize - hw - 6, hy = BOARD_TOP + 6;
+            setfillcolor(RGB(10, 15, 22));
+            solidrectangle(hx, hy, hx + hw, hy + hh);
+            setfillcolor(COLOR_POSITIVE);
+            solidrectangle(hx, hy, hx + hw, hy + 3);
+            drawTextAt(hx + 8, hy + 6, _T("玩家二 (方向键)"), (int)(14*hudScale), COLOR_POSITIVE);
+            TCHAR buf[64];
+            _stprintf_s(buf, 64, _T("得分 %d    蛇 %d    弓 %d    盾 %d"),
+                state->ai.score, state->ai.length, state->ai.bowArrows, state->ai.shieldCharges);
+            drawTextAt(hx + 8, hy + 30, buf, (int)(12*hudScale), COLOR_TEXT);
+        }
+        /* 底部居中：事件+时间 */
+        {
+            TCHAR buf[64];
+            int bw = (int)(300 * hudScale), bh = (int)(30 * hudScale);
+            int bx = BOARD_LEFT + (boardSize - bw) / 2, by = BOARD_TOP + boardSize - bh - 6;
+            setfillcolor(RGB(10, 15, 22));
+            solidrectangle(bx, by, bx + bw, by + bh);
+            if (state->event.activeEvent != EVENT_NONE) {
+                const TCHAR *en = (state->event.activeEvent == EVENT_BOMBARDMENT)
+                    ? _T("轰炸") : _T("箭雨");
+                int rs = (state->event.eventTimerMs + 999) / 1000;
+                _stprintf_s(buf, 64, _T("%s %ds    剩余 %ds"), en, rs, state->remainingSeconds);
+            } else {
+                _stprintf_s(buf, 64, _T("剩余时间 %ds"), state->remainingSeconds);
+            }
+            drawTextAt(bx + 10, by + 6, buf, (int)(14*hudScale), COLOR_WARNING);
+        }
+    } else {
+    setfillcolor(COLOR_PANEL);
+    solidrectangle(x, BOARD_TOP, render->windowWidth - 24, BOARD_TOP + boardSize);
 
     /* ──────────── 卡片化侧栏 ──────────── */
     {
@@ -1800,6 +1848,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             }
         }
     }
+    } /* end else (非多人模式侧栏) */
 
     if (waitingForStart) {
         const TCHAR *text;

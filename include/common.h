@@ -12,7 +12,7 @@
 #define BOARD_PIXEL_SIZE 700
 #define BOARD_LEFT 24
 #define BOARD_TOP 56
-#define SIDE_PANEL_WIDTH 280
+#define SIDE_PANEL_WIDTH 210
 
 /* UI 配色系统 — 清爽现代暗色 */
 #define COLOR_BG         RGB(26, 31, 43)
