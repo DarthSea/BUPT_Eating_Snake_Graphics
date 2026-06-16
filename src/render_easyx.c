@@ -453,12 +453,43 @@ static void drawCenteredTextGlow(int left, int top, int right, int bottom,
 }
 
 /* 道具标签 — 圆角小方块 + 文字 */
+typedef enum { ICON_LENGTH = 0, ICON_ARROW, ICON_SHIELD } TagIcon;
+
+/* 在小标签旁画图标（仅用 EasyX 基础图形） */
+static void drawTagIcon(int cx, int cy, int sz, TagIcon icon, COLORREF color)
+{
+    setfillcolor(color);
+    if (icon == ICON_LENGTH) {
+        /* 蛇身: 横条 + 小圆头 */
+        setfillcolor(color);
+        solidcircle(cx + sz*3/4, cy + sz/2, sz/3);
+        solidrectangle(cx, cy + sz/4, cx + sz*3/4, cy + sz*3/4);
+    } else if (icon == ICON_ARROW) {
+        /* 箭头: 横线 + 三角 */
+        int mid = cy + sz/2;
+        setfillcolor(color);
+        solidrectangle(cx, mid - sz/6, cx + sz*2/3, mid + sz/6);
+        /* 三角用三根线 */
+        setlinecolor(color);
+        line(cx + sz*2/3, mid - sz/3, cx + sz, mid);
+        line(cx + sz*2/3, mid + sz/3, cx + sz, mid);
+        line(cx + sz*2/3, mid - sz/3, cx + sz*2/3, mid + sz/3);
+    } else {
+        /* 护盾: 圆 + 十字 */
+        solidcircle(cx + sz/2, cy + sz/2, sz/3);
+        setfillcolor(COLOR_BG);
+        solidrectangle(cx + sz/2 - 1, cy + sz/3, cx + sz/2 + 1, cy + sz*2/3);
+        solidrectangle(cx + sz/3, cy + sz/2 - 1, cx + sz*2/3, cy + sz/2 + 1);
+    }
+}
+
 static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color, float txtScale)
 {
     TCHAR buf[32];
-    int tagW = (int)(58 * txtScale);
+    int tagW = (int)(64 * txtScale);
     int tagH = (int)(24 * txtScale);
     int r = 4;
+    int iconSz = (int)(12 * txtScale);
 
     setfillcolor(COLOR_BG);
     solidrectangle(x + r, y, x + tagW - r, y + tagH);
@@ -468,8 +499,16 @@ static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color,
     solidcircle(x + r, y + tagH - r, r);
     solidcircle(x + tagW - r, y + tagH - r, r);
 
+    /* 图标 */
+    {
+        TagIcon icon;
+        if (_tcscmp(label, _T("长度")) == 0) icon = ICON_LENGTH;
+        else if (_tcscmp(label, _T("弓箭")) == 0) icon = ICON_ARROW;
+        else icon = ICON_SHIELD;
+        drawTagIcon(x + (int)(6 * txtScale), y + (tagH - iconSz)/2, iconSz, icon, color);
+    }
     _stprintf_s(buf, 32, _T("%s %d"), label, value);
-    drawTextAt(x + (int)(8 * txtScale), y + (int)(3 * txtScale), buf, (int)(12 * txtScale), color);
+    drawTextAt(x + (int)(22 * txtScale), y + (int)(3 * txtScale), buf, (int)(12 * txtScale), color);
 }
 
 static void drawMenuButton(int index, int selected, const TCHAR *text)
