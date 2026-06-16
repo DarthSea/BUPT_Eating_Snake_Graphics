@@ -735,7 +735,7 @@ static void drawSmallButton(int index, bool selected, const TCHAR *text, int cou
     int r = (int)(6 * ms);
 
     if (selected) {
-        setfillcolor(index == 2 ? COLOR_MENU_EXIT : COLOR_ACCENT);
+        setfillcolor(index == 2 ? COLOR_ACCENT : COLOR_ACCENT);
     } else {
         setfillcolor(index == 2 ? COLOR_MENU_EXIT : COLOR_MENU_CARD);
     }
@@ -745,10 +745,14 @@ static void drawSmallButton(int index, bool selected, const TCHAR *text, int cou
     solidcircle(left + width - r, top + r, r);
     solidcircle(left + r, top + height - r, r);
     solidcircle(left + width - r, top + height - r, r);
+    if (selected) {
+        setlinecolor(COLOR_ACCENT);
+        roundrect(left + 2, top + 2, left + width - 2, top + height - 2, r + 4, r + 4);
+    }
 
     COLORREF txtColor;
     if (selected) {
-        txtColor = (index == 2) ? COLOR_DANGER : RGB(13, 21, 32);
+        txtColor = RGB(13, 21, 32);
     } else {
         txtColor = (index == 2) ? COLOR_DANGER : RGB(136, 148, 164);
     }
@@ -1641,8 +1645,8 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             int remainSec = (state->event.eventTimerMs + 999) / 1000;
             if (remainSec < 0) remainSec = 0;
 
-            /* 红色圆角边框 */
-            setlinecolor(COLOR_DANGER);
+            /* 圆角边框 — 100x100不用红色边框(太大太显眼) */
+            setlinecolor(mapSize >= 100 ? COLOR_BORDER : COLOR_DANGER);
             setfillcolor(COLOR_CARD);
             solidrectangle(cardX + 4, cardY, cardX + cardW - 4, cardY + ch);
             solidrectangle(cardX, cardY + 4, cardX + cardW, cardY + ch - 4);
