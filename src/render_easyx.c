@@ -776,8 +776,10 @@ static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TC
         setlinecolor(COLOR_ACCENT);
         roundrect(left + 3, top + 3, left + width - 3, top + height - 3, 8, 8);
     }
-    drawTextAt(left + 22, top + (height - 22)/2, label, 20, selected ? COLOR_ACCENT : COLOR_TEXT);
-    drawTextAt(left + width - (int)(gWindowWidth * 0.18f), top + (height - 22)/2, value, 20, COLOR_SCORE);
+    drawTextAt(left + 22, top + (height - 22)/2, label, 20,
+        selected ? RGB(13, 21, 32) : COLOR_TEXT);
+    drawTextAt(left + width - (int)(gWindowWidth * 0.18f), top + (height - 22)/2, value, 20,
+        selected ? RGB(13, 21, 32) : COLOR_SCORE);
 }
 
 static void loadTexture(TextureSlot *slot, const TCHAR *folder, TextureId id, int textureSize)

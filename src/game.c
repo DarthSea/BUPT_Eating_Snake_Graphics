@@ -1050,6 +1050,8 @@ void Game_applyModeDefaults(GameConfig *config, GameMode mode)
         config->moveIntervalMs = 130;
         config->timeLimitSeconds = TIME_LIMIT_SECONDS;
         config->variant = VARIANT_DIVERSE;
+        /* 多人模式限制最大 50x50，100x100 屏幕显示不全 */
+        if (config->mapSize > 50) config->mapSize = 50;
     }
 }
 
