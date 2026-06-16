@@ -1645,15 +1645,19 @@ void Render_drawGame(RenderContext *render, const GameState *state,
             int remainSec = (state->event.eventTimerMs + 999) / 1000;
             if (remainSec < 0) remainSec = 0;
 
-            /* 圆角边框 — 100x100不用红色边框(太大太显眼) */
-            setlinecolor(mapSize >= 100 ? COLOR_BORDER : COLOR_DANGER);
-            setfillcolor(COLOR_CARD);
-            solidrectangle(cardX + 4, cardY, cardX + cardW - 4, cardY + ch);
-            solidrectangle(cardX, cardY + 4, cardX + cardW, cardY + ch - 4);
-            solidcircle(cardX + 4, cardY + 4, 4);
-            solidcircle(cardX + cardW - 4, cardY + 4, 4);
-            solidcircle(cardX + 4, cardY + ch - 4, 4);
-            solidcircle(cardX + cardW - 4, cardY + ch - 4, 4);
+            /* 卡片背景 — 100x100与其他卡片同款 */
+            if (mapSize >= 100) {
+                drawCardWithShadow(cardX, cardY, cardX + cardW, cardY + ch, 6, COLOR_CARD);
+            } else {
+                setlinecolor(COLOR_DANGER);
+                setfillcolor(COLOR_CARD);
+                solidrectangle(cardX + 4, cardY, cardX + cardW - 4, cardY + ch);
+                solidrectangle(cardX, cardY + 4, cardX + cardW, cardY + ch - 4);
+                solidcircle(cardX + 4, cardY + 4, 4);
+                solidcircle(cardX + cardW - 4, cardY + 4, 4);
+                solidcircle(cardX + 4, cardY + ch - 4, 4);
+                solidcircle(cardX + cardW - 4, cardY + ch - 4, 4);
+            }
 
             _stprintf_s(buffer, 128, _T("%s    %ds"), eventName, remainSec);
             drawTextAt(cardX + (int)(16 * txtScale), cardY + (int)(6 * txtScale),
