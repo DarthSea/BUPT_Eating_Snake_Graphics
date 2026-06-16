@@ -1180,15 +1180,12 @@ void Render_drawWelcome(int selected)
 
     /* 标题 */
     drawCenteredText(0, 70, gWindowWidth, 140, _T("贪吃蛇"), 48, COLOR_TEXT);
-    drawCenteredText(0, 120, gWindowWidth, 158,
-        _T("BUPT  EASYX  EDITION"), 13, COLOR_ACCENT);
-
     /* 装饰线 */
     {
         int lineW = 50;
         int lineX = (gWindowWidth - lineW) / 2;
         setlinecolor(COLOR_ACCENT);
-        line(lineX, 168, lineX + lineW, 168);
+        line(lineX, 138, lineX + lineW, 138);
     }
 
     /* 主按钮 */
