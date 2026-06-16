@@ -74,6 +74,114 @@ static const TCHAR *TEXTURE_NAMES[TEX_COUNT] = {
 
 static int gWindowWidth = 1440;
 static int gWindowHeight = 1000;
+static int gMenuBgTimer = 0;
+
+/* 菜单装饰小蛇 */
+#define MENU_SNAKE_COUNT 2
+#define MENU_SNAKE_MAXLEN 6
+typedef struct {
+    Pos body[MENU_SNAKE_MAXLEN];
+    int length;
+    Direction dir;
+    int moveTimer;
+} MenuBgSnake;
+static MenuBgSnake gMenuSnakes[MENU_SNAKE_COUNT];
+static Pos gMenuFoods[3];
+static bool gMenuSnakesInit = false;
+
+static void initMenuBgSnakes(void)
+{
+    int i, j;
+    for (i = 0; i < MENU_SNAKE_COUNT; i++) {
+        MenuBgSnake *s = &gMenuSnakes[i];
+        s->length = 4 + i;
+        s->dir = (Direction)(i % 4);
+        s->moveTimer = 0;
+        s->body[0].row = 30 + i * 60;
+        s->body[0].col = 40 + i * 80;
+        for (j = 1; j < s->length; j++) {
+            s->body[j] = s->body[j-1];
+            if (s->dir == DIR_RIGHT) s->body[j].col--;
+            else if (s->dir == DIR_UP) s->body[j].row++;
+            else if (s->dir == DIR_DOWN) s->body[j].row--;
+            else s->body[j].col++;
+        }
+    }
+    gMenuFoods[0].row = 15; gMenuFoods[0].col = 25;
+    gMenuFoods[1].row = 55; gMenuFoods[1].col = 70;
+    gMenuFoods[2].row = 80; gMenuFoods[2].col = 45;
+    gMenuSnakesInit = true;
+}
+
+static void updateMenuBgSnakes(int deltaMs)
+{
+    int i, j;
+    if (!gMenuSnakesInit) initMenuBgSnakes();
+    gMenuBgTimer += deltaMs;
+    if (gMenuBgTimer < 300) return;
+    gMenuBgTimer = 0;
+
+    for (i = 0; i < MENU_SNAKE_COUNT; i++) {
+        MenuBgSnake *s = &gMenuSnakes[i];
+        Pos head = s->body[0];
+        Pos next = Common_nextPos(head, s->dir);
+
+        /* 碰边界转向 */
+        if (next.row < 2 || next.row > 98 || next.col < 2 || next.col > 98) {
+            s->dir = (Direction)((s->dir + 1 + rand() % 3) % 4);
+            next = Common_nextPos(head, s->dir);
+        }
+        /* 碰食物 */
+        for (j = 0; j < 3; j++) {
+            if (next.row == gMenuFoods[j].row && next.col == gMenuFoods[j].col) {
+                if (s->length < MENU_SNAKE_MAXLEN) s->length++;
+                gMenuFoods[j].row = 3 + rand() % 94;
+                gMenuFoods[j].col = 3 + rand() % 94;
+            }
+        }
+        /* 移动 */
+        for (j = s->length - 1; j > 0; j--) s->body[j] = s->body[j-1];
+        s->body[0] = next;
+    }
+}
+
+static void drawMenuBgSnakes(void)
+{
+    int i, j;
+    for (i = 0; i < MENU_SNAKE_COUNT; i++) {
+        MenuBgSnake *s = &gMenuSnakes[i];
+        COLORREF color = (i == 0) ? RGB(64, 112, 160) : RGB(80, 96, 160);
+        for (j = 0; j < s->length; j++) {
+            int px = s->body[j].col * gWindowWidth / 100;
+            int py = s->body[j].row * gWindowHeight / 100;
+            int r = (int)(3.5f - j * 0.5f);
+            if (r < 1) r = 1;
+            setfillcolor(color);
+            solidcircle(px, py, r);
+        }
+    }
+    /* 食物 */
+    for (i = 0; i < 3; i++) {
+        int fx = gMenuFoods[i].col * gWindowWidth / 100;
+        int fy = gMenuFoods[i].row * gWindowHeight / 100;
+        setfillcolor(RGB(255, 112, 64));
+        solidcircle(fx, fy, 2);
+    }
+}
+
+/* 菜单通用背景：渐变 + 小蛇 + 粒子 */
+static void drawMenuBackground(void)
+{
+    int y, step = 4;
+    for (y = 0; y < gWindowHeight; y += step) {
+        int r = 22 + 8 * y / gWindowHeight;
+        int g = 32 + 14 * y / gWindowHeight;
+        int b = 48 + 24 * y / gWindowHeight;
+        setfillcolor(RGB(r, g, b));
+        solidrectangle(0, y, gWindowWidth, y + step);
+    }
+    drawMenuBgSnakes();
+}
 
 static int minInt(int a, int b)
 {
@@ -551,44 +659,82 @@ static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color,
 static void drawMenuButton(int index, int selected, const TCHAR *text)
 {
     int width = gWindowWidth * 55 / 100;
-    if (width > 500) width = 500;
-    if (width < 280) width = 280;
-    int height = 50;
+    if (width > 520) width = 520;
+    if (width < 300) width = 300;
+    int height = 46;
     int left = (gWindowWidth - width) / 2;
-    int top = 190 + index * 58;
+    int top = 200 + index * (height + 8);
     bool isSelected = index == selected;
 
-    drawRoundedRect(left, top, left + width, top + height, 8,
-        isSelected ? COLOR_CARD_HOVER : COLOR_CARD,
-        isSelected ? COLOR_ACCENT : COLOR_BORDER);
+    /* 卡片背景 */
     if (isSelected) {
-        setfillcolor(COLOR_ACCENT);
-        solidrectangle(left, top, left + 3, top + height);
+        /* 渐变蓝底 — EasyX用纯色+左边条模拟 */
+        setfillcolor(COLOR_MENU_GRAD);
+        solidrectangle(left + 6, top, left + width - 6, top + height);
+        solidrectangle(left, top + 6, left + width, top + height - 6);
+        solidcircle(left + 6, top + 6, 6);
+        solidcircle(left + width - 6, top + 6, 6);
+        solidcircle(left + 6, top + height - 6, 6);
+        solidcircle(left + width - 6, top + height - 6, 6);
+        /* 蓝色描边 */
+        setlinecolor(COLOR_ACCENT);
+        rectangle(left + 6, top, left + width - 6, top + height);
+        rectangle(left, top + 6, left + width, top + height - 6);
+    } else {
+        setfillcolor(COLOR_MENU_CARD);
+        solidrectangle(left + 6, top, left + width - 6, top + height);
+        solidrectangle(left, top + 6, left + width, top + height - 6);
+        solidcircle(left + 6, top + 6, 6);
+        solidcircle(left + width - 6, top + 6, 6);
+        solidcircle(left + 6, top + height - 6, 6);
+        solidcircle(left + width - 6, top + height - 6, 6);
     }
-    drawCenteredText(left, top, left + width, top + height, text, 21,
-        isSelected ? COLOR_ACCENT : COLOR_TEXT);
+
+    /* 圆形编号 */
+    {
+        int numX = left + 18;
+        int numY = top + height / 2;
+        TCHAR num[4];
+        _stprintf_s(num, 4, _T("%d"), index + 1);
+        if (isSelected) {
+            setfillcolor(COLOR_ACCENT);
+            solidcircle(numX, numY, 11);
+            drawCenteredText(numX - 11, numY - 11, numX + 11, numY + 11,
+                num, 12, RGB(13, 21, 32));
+        } else {
+            setfillcolor(COLOR_MENU_NUM);
+            solidcircle(numX, numY, 11);
+            drawCenteredText(numX - 11, numY - 11, numX + 11, numY + 11,
+                num, 12, COLOR_TEXT_DIM);
+        }
+    }
+
+    /* 文字 */
+    drawTextAt(left + 42, top + 10, text, 14,
+        isSelected ? COLOR_ACCENT : RGB(192, 200, 212));
 }
 
 static void drawSmallButton(int index, bool selected, const TCHAR *text, int count)
 {
-    int width = gWindowWidth * 27 / 100;
-    if (width > 280) width = 280;
-    if (width < 180) width = 180;
-    int height = 56;
-    int gap = 24;
+    int width = gWindowWidth * 25 / 100;
+    if (width > 240) width = 240;
+    if (width < 150) width = 150;
+    int height = 40;
+    int gap = 18;
     int total = count * width + (count - 1) * gap;
     int left = (gWindowWidth - total) / 2 + index * (width + gap);
-    int top = 330;
+    int top = 340;
 
-    drawRoundedRect(left, top, left + width, top + height, 8,
-        selected ? COLOR_CARD_HOVER : COLOR_CARD,
-        selected ? COLOR_ACCENT : COLOR_BORDER);
-    if (selected) {
-        setfillcolor(COLOR_ACCENT);
-        solidrectangle(left, top, left + 3, top + height);
-    }
-    drawCenteredText(left, top, left + width, top + height, text, 24,
-        selected ? COLOR_ACCENT : COLOR_TEXT);
+    setfillcolor(selected ? COLOR_ACCENT : COLOR_MENU_CARD);
+    solidrectangle(left + 5, top, left + width - 5, top + height);
+    solidrectangle(left, top + 5, left + width, top + height - 5);
+    solidcircle(left + 5, top + 5, 5);
+    solidcircle(left + width - 5, top + 5, 5);
+    solidcircle(left + 5, top + height - 5, 5);
+    solidcircle(left + width - 5, top + height - 5, 5);
+
+    drawCenteredText(left, top, left + width, top + height, text, 14,
+        selected ? RGB(13, 21, 32) : RGB(136, 148, 164));
 }
 
 static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TCHAR *value)
@@ -600,15 +746,20 @@ static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TC
     int width = gWindowWidth - left * 2;
     int height = 48;
 
-    drawRoundedRect(left, top, left + width, top + height, 8,
-        selected ? COLOR_CARD_HOVER : COLOR_CARD,
-        selected ? COLOR_ACCENT : COLOR_BORDER);
+    setfillcolor(selected ? COLOR_ACCENT : COLOR_MENU_CARD);
+    solidrectangle(left + 5, top, left + width - 5, top + height);
+    solidrectangle(left, top + 5, left + width, top + height - 5);
+    solidcircle(left + 5, top + 5, 5);
+    solidcircle(left + width - 5, top + 5, 5);
+    solidcircle(left + 5, top + height - 5, 5);
+    solidcircle(left + width - 5, top + height - 5, 5);
     if (selected) {
-        setfillcolor(COLOR_ACCENT);
-        solidrectangle(left, top, left + 3, top + height);
+        setlinecolor(COLOR_ACCENT);
+        rectangle(left + 5, top, left + width - 5, top + height);
+        rectangle(left, top + 5, left + width, top + height - 5);
     }
-    drawTextAt(left + 22, top + 12, label, 21, selected ? COLOR_ACCENT : COLOR_TEXT);
-    drawTextAt(left + width - 260, top + 12, value, 21, COLOR_SCORE);
+    drawTextAt(left + 22, top + 12, label, 18, selected ? COLOR_ACCENT : COLOR_TEXT);
+    drawTextAt(left + width - (int)(gWindowWidth * 0.18f), top + 12, value, 18, COLOR_SCORE);
 }
 
 static void loadTexture(TextureSlot *slot, const TCHAR *folder, TextureId id, int textureSize)
@@ -970,33 +1121,56 @@ static void ensureGameTextureSize(RenderContext *render, int cellSize)
 
 void Render_drawWelcome(int selected)
 {
-    static const TCHAR *OPTIONS[] = {
+    static const TCHAR *MAIN_OPTIONS[] = {
         _T("单人模式"),
         _T("AI 对战模式"),
         _T("限时挑战模式"),
-        _T("本地多人模式"),
-        _T("更换时装"),
-        _T("设置"),
-        _T("退出游戏")
+        _T("本地多人模式")
+    };
+    static const TCHAR *SUB_OPTIONS[] = {
+        _T("更换时装"), _T("设置"), _T("退出游戏")
     };
     int i;
 
+    updateMenuBgSnakes(16);
     cleardevice();
-    setfillcolor(COLOR_BG);
-    solidrectangle(0, 0, gWindowWidth, gWindowHeight);
-    drawCenteredText(0, 72, gWindowWidth, 132, _T("图形化贪吃蛇"), 44, COLOR_TEXT);
-    drawCenteredText(0, 137, gWindowWidth, 175, _T("BUPT EasyX Edition"), 20, COLOR_TEXT_DIM);
-    for (i = 0; i < 7; i++) {
-        drawMenuButton(i, selected, OPTIONS[i]);
+    drawMenuBackground();
+
+    /* 标题 */
+    drawCenteredText(0, 70, gWindowWidth, 140, _T("贪吃蛇"), 48, COLOR_TEXT);
+    drawCenteredText(0, 120, gWindowWidth, 158,
+        _T("BUPT  EASYX  EDITION"), 13, COLOR_ACCENT);
+
+    /* 装饰线 */
+    {
+        int lineW = 50;
+        int lineX = (gWindowWidth - lineW) / 2;
+        setlinecolor(COLOR_ACCENT);
+        line(lineX, 168, lineX + lineW, 168);
     }
+
+    /* 主按钮 */
+    for (i = 0; i < 4; i++) {
+        drawMenuButton(i, selected, MAIN_OPTIONS[i]);
+    }
+
+    /* 底部次要按钮 */
+    for (i = 0; i < 3; i++) {
+        bool sel = (i + 4 == selected);
+        drawSmallButton(i, sel, SUB_OPTIONS[i], 3);
+    }
+
+    /* 飘浮粒子 */
+    if (Game_isUsingParticles()) Render_particlesDraw();
+
     FlushBatchDraw();
 }
 
 void Render_drawVariantMenu(MapVariant selected)
 {
+    updateMenuBgSnakes(16);
     cleardevice();
-    setfillcolor(COLOR_BG);
-    solidrectangle(0, 0, gWindowWidth, gWindowHeight);
+    drawMenuBackground();
     drawCenteredText(0, 145, gWindowWidth, 200, _T("选择玩法规则"), 38, COLOR_TEXT);
     drawSmallButton(0, selected == VARIANT_CLASSIC, _T("常规模式"), 2);
     drawSmallButton(1, selected == VARIANT_DIVERSE, _T("多样模式"), 2);
@@ -1005,9 +1179,9 @@ void Render_drawVariantMenu(MapVariant selected)
 
 void Render_drawDifficultyMenu(AiDifficulty selected)
 {
+    updateMenuBgSnakes(16);
     cleardevice();
-    setfillcolor(COLOR_BG);
-    solidrectangle(0, 0, gWindowWidth, gWindowHeight);
+    drawMenuBackground();
     drawCenteredText(0, 145, gWindowWidth, 200, _T("选择 AI 难度"), 38, COLOR_TEXT);
     drawSmallButton(0, selected == AI_EASY, _T("低"), 3);
     drawSmallButton(1, selected == AI_MEDIUM, _T("中"), 3);
@@ -1019,9 +1193,9 @@ void Render_drawSkinMenu(int selectedSkin)
 {
     int i;
 
+    updateMenuBgSnakes(16);
     cleardevice();
-    setfillcolor(COLOR_BG);
-    solidrectangle(0, 0, gWindowWidth, gWindowHeight);
+    drawMenuBackground();
     drawCenteredText(0, 110, gWindowWidth, 165, _T("更换时装"), 40, COLOR_TEXT);
     for (i = 0; i < Render_skinCount(); i++) {
         drawMenuButton(i, selectedSkin, Render_skinDisplayName(i));
@@ -1033,9 +1207,9 @@ void Render_drawSettings(const GameConfig *config, int selectedRow)
 {
     TCHAR value[64];
 
+    updateMenuBgSnakes(16);
     cleardevice();
-    setfillcolor(COLOR_BG);
-    solidrectangle(0, 0, gWindowWidth, gWindowHeight);
+    drawMenuBackground();
     drawCenteredText(0, 74, gWindowWidth, 128, _T("设置"), 40, COLOR_TEXT);
     drawCenteredText(0, 136, gWindowWidth, 168,
         _T("W/S 选择，A/D 修改，Enter 返回"), 18, COLOR_TEXT_DIM);

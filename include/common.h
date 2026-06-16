@@ -32,6 +32,14 @@
 #define COLOR_SHADOW     RGB(12, 15, 22)
 #define COLOR_GRID       RGB(50, 58, 72)
 
+/* 菜单专用配色 — 更亮的深蓝科技风 */
+#define COLOR_MENU_BG1   RGB(22, 32, 48)
+#define COLOR_MENU_BG2   RGB(30, 46, 72)
+#define COLOR_MENU_CARD   RGB(42, 52, 70)
+#define COLOR_MENU_GRAD   RGB(30, 58, 95)
+#define COLOR_MENU_EXIT   RGB(55, 22, 22)
+#define COLOR_MENU_NUM    RGB(58, 68, 86)
+
 #define WINDOW_WIDTH (BOARD_LEFT * 2 + BOARD_PIXEL_SIZE + SIDE_PANEL_WIDTH)
 #define WINDOW_HEIGHT (BOARD_TOP + BOARD_PIXEL_SIZE + 24)
 
