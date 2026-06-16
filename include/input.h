@@ -28,6 +28,8 @@ Direction Input_readPlayer2Direction(void);
 void Input_readMenu(InputContext *input, MenuInput *out);
 
 /* Mouse input */
+extern int gMouseX;
+extern int gMouseY;
 void Input_updateMouse(void);
 bool Input_mouseInRect(int left, int top, int right, int bottom);
 bool Input_mouseLeftClicked(void);

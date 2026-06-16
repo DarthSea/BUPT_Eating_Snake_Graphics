@@ -23,6 +23,7 @@ static int wrapIndex(int value, int count)
 MenuAction Ui_runWelcome(InputContext *input, RenderContext *render)
 {
     int selected = 0;
+    static int prevMouseX = -1, prevMouseY = -1;
 
     for (;;) {
         MenuInput menu;
@@ -42,12 +43,38 @@ MenuAction Ui_runWelcome(InputContext *input, RenderContext *render)
             return MENU_EXIT;
         }
 
-        /* 鼠标 hover */
+        /* 鼠标 hover — 仅鼠标移动时更新选择，不影响键盘 */
         {
-            int btnLeft = (render->windowWidth - 390) / 2;
+            float ms = (float)render->windowWidth / 1280.0f;
+            if (ms < 0.85f) ms = 0.85f;
+            if (ms > 1.5f) ms = 1.5f;
+            int btnH = (int)(58 * ms);
+            int btnGap = (int)(10 * ms);
+            int btnW = (int)(render->windowWidth * 0.48f);
+            if (btnW > (int)(560 * ms)) btnW = (int)(560 * ms);
+            int btnLeft = (render->windowWidth - btnW) / 2;
+            int mouseMoved = (prevMouseX != gMouseX || prevMouseY != gMouseY);
+            prevMouseX = gMouseX; prevMouseY = gMouseY;
+
             for (int i = 0; i < 7; i++) {
-                int btnTop = 190 + i * 58;
-                if (Input_mouseInRect(btnLeft, btnTop, btnLeft + 390, btnTop + 50)) {
+                int btnTop;
+                if (i < 4) {
+                    btnTop = (int)(170 * ms) + i * (btnH + btnGap);
+                } else {
+                    /* 次要按钮 */
+                    int sW = (int)(render->windowWidth * 0.20f);
+                    if (sW > (int)(200 * ms)) sW = (int)(200 * ms);
+                    int sH = (int)(42 * ms);
+                    int sGap = (int)(20 * ms);
+                    int total = 3 * sW + 2 * sGap;
+                    int subLeft = (render->windowWidth - total) / 2 + (i - 4) * (sW + sGap);
+                    btnTop = (int)(170 * ms) + 4 * (btnH + btnGap) + (int)(20 * ms);
+                    if (mouseMoved && Input_mouseInRect(subLeft, btnTop, subLeft + sW, btnTop + sH)) {
+                        selected = i;
+                    }
+                    continue;
+                }
+                if (mouseMoved && Input_mouseInRect(btnLeft, btnTop, btnLeft + btnW, btnTop + btnH)) {
                     selected = i;
                 }
             }

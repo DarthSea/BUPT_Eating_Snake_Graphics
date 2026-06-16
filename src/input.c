@@ -108,8 +108,8 @@ void Input_readMenu(InputContext *input, MenuInput *out)
  * Mouse input
  * ================================================================ */
 
-static int gMouseX = 0;
-static int gMouseY = 0;
+int gMouseX = 0;
+int gMouseY = 0;
 static bool gMouseLeftPressed = false;
 static bool gMouseRightPressed = false;
 static bool gMouseLeftDown = false;
