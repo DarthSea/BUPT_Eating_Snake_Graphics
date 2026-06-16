@@ -91,6 +91,15 @@ int main(void)
                 continue;
             }
 
+            {
+                int mapSz = config.mapSize;
+                if (!Ui_chooseMapSize(&input, &render, &mapSz,
+                    config.mode == MODE_LOCAL_MULTIPLAYER)) {
+                    continue;
+                }
+                config.mapSize = mapSz;
+            }
+
             variant = config.variant;
             if (!Ui_chooseVariant(&input, &render, &variant)) {
                 continue;

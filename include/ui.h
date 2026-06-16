@@ -21,6 +21,7 @@ bool Ui_chooseVariant(InputContext *input, RenderContext *render, MapVariant *va
 bool Ui_chooseDifficulty(InputContext *input, RenderContext *render, AiDifficulty *difficulty);
 bool Ui_chooseSkin(InputContext *input, RenderContext *render, int *skinId);
 bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *settings);
+bool Ui_chooseMapSize(InputContext *input, RenderContext *render, int *mapSize, bool isMulti);
 bool Ui_chooseControls(InputContext *input, RenderContext *render, GameConfig *config);
 bool Ui_chooseControlsSingle(InputContext *input, RenderContext *render, GameConfig *config);
 bool Ui_runGame(InputContext *input, RenderContext *render, GameState *state);

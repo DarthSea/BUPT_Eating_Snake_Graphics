@@ -187,6 +187,33 @@ bool Ui_chooseControls(InputContext *input, RenderContext *render, GameConfig *c
     return true;
 }
 
+bool Ui_chooseMapSize(InputContext *input, RenderContext *render, int *mapSize, bool isMulti)
+{
+    int sel = (*mapSize == 50) ? 1 : (*mapSize >= 100 ? 2 : 0);
+    int maxOpt = isMulti ? 2 : 3; /* 多人只给20和50 */
+
+    for (;;) {
+        MenuInput menu;
+        Input_updateMouse();
+        Input_updateGamepads();
+
+        Render_drawMapSizeMenu(sel, isMulti);
+        Input_readMenu(input, &menu);
+        if (menu.move != 0) sel = wrapIndex(sel + menu.move, maxOpt);
+        if (menu.confirm) { *mapSize = (sel == 0) ? 20 : (sel == 1) ? 50 : 100; return true; }
+        if (menu.cancel) return false;
+
+        /* 手柄 */
+        if (Input_gamepadConnected(0)) {
+            Direction d = Input_gamepadDirection(0);
+            if (d == DIR_UP) sel = wrapIndex(sel - 1, maxOpt);
+            if (d == DIR_DOWN) sel = wrapIndex(sel + 1, maxOpt);
+            if (Input_gamepadButtonPressed(0, 0x1000)) { *mapSize = (sel == 0) ? 20 : (sel == 1) ? 50 : 100; return true; }
+        }
+        Sleep(16);
+    }
+}
+
 bool Ui_chooseControlsSingle(InputContext *input, RenderContext *render, GameConfig *config)
 {
     int sel = (int)config->p1ControlMethod;

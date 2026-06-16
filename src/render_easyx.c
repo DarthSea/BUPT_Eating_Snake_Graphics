@@ -1204,6 +1204,22 @@ void Render_drawWelcome(int selected)
     FlushBatchDraw();
 }
 
+void Render_drawMapSizeMenu(int selected, bool isMulti)
+{
+    static const TCHAR *SIZES[] = { _T("20 x 20"), _T("50 x 50"), _T("100 x 100") };
+    int count = isMulti ? 2 : 3;
+    int i;
+
+    updateMenuBgSnakes(16);
+    cleardevice();
+    drawMenuBackground();
+    drawCenteredText(0, 110, gWindowWidth, 170, _T("选择地图大小"), 38, COLOR_TEXT);
+    for (i = 0; i < count; i++) {
+        drawSmallButton(i, i == selected, SIZES[i], count);
+    }
+    FlushBatchDraw();
+}
+
 void Render_drawVariantMenu(MapVariant selected)
 {
     updateMenuBgSnakes(16);

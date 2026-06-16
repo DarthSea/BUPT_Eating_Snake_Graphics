@@ -55,6 +55,7 @@ const TCHAR *Render_skinDisplayName(int skinId);
 const TCHAR *Render_resolutionDisplayName(DisplayResolution resolution);
 
 void Render_drawWelcome(int selected);
+void Render_drawMapSizeMenu(int selected, bool isMulti);
 void Render_drawVariantMenu(MapVariant selected);
 void Render_drawDifficultyMenu(AiDifficulty selected);
 void Render_drawSkinMenu(int selectedSkin);
