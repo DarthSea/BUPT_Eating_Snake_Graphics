@@ -659,51 +659,44 @@ static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color,
 /* 菜单缩放因子 */
 static float menuScale(void)
 {
-    float s = gWindowWidth / 1440.0f;
-    if (s < 0.75f) s = 0.75f;
-    if (s > 1.4f) s = 1.4f;
+    float s = gWindowWidth / 1280.0f;
+    if (s < 0.85f) s = 0.85f;
+    if (s > 1.5f) s = 1.5f;
     return s;
 }
 
 static void drawMenuButton(int index, int selected, const TCHAR *text)
 {
     float ms = menuScale();
-    int width = (int)(gWindowWidth * 0.50f);
-    if (width > (int)(520 * ms)) width = (int)(520 * ms);
-    if (width < (int)(280 * ms)) width = (int)(280 * ms);
-    int height = (int)(46 * ms);
-    int gap = (int)(8 * ms);
+    int width = (int)(gWindowWidth * 0.48f);
+    if (width > (int)(560 * ms)) width = (int)(560 * ms);
+    if (width < (int)(300 * ms)) width = (int)(300 * ms);
+    int height = (int)(58 * ms);
+    int gap = (int)(10 * ms);
     int left = (gWindowWidth - width) / 2;
-    int top = (int)(180 * ms) + index * (height + gap);
+    int top = (int)(170 * ms) + index * (height + gap);
     bool isSelected = index == selected;
-    int r = (int)(6 * ms);
-    int numR = (int)(11 * ms);
+    int r = (int)(8 * ms);
+    int numR = (int)(14 * ms);
 
-    /* 卡片背景 */
+    /* 卡片背景 — 圆角纯色，选中加单层描边 */
+    setfillcolor(isSelected ? COLOR_MENU_GRAD : COLOR_MENU_CARD);
+    solidrectangle(left + r, top, left + width - r, top + height);
+    solidrectangle(left, top + r, left + width, top + height - r);
+    solidcircle(left + r, top + r, r);
+    solidcircle(left + width - r, top + r, r);
+    solidcircle(left + r, top + height - r, r);
+    solidcircle(left + width - r, top + height - r, r);
+
     if (isSelected) {
-        setfillcolor(COLOR_MENU_GRAD);
-        solidrectangle(left + r, top, left + width - r, top + height);
-        solidrectangle(left, top + r, left + width, top + height - r);
-        solidcircle(left + r, top + r, r);
-        solidcircle(left + width - r, top + r, r);
-        solidcircle(left + r, top + height - r, r);
-        solidcircle(left + width - r, top + height - r, r);
+        /* 单层描边 — 用 2px 粗线 */
         setlinecolor(COLOR_ACCENT);
-        rectangle(left + r, top, left + width - r, top + height);
-        rectangle(left, top + r, left + width, top + height - r);
-    } else {
-        setfillcolor(COLOR_MENU_CARD);
-        solidrectangle(left + r, top, left + width - r, top + height);
-        solidrectangle(left, top + r, left + width, top + height - r);
-        solidcircle(left + r, top + r, r);
-        solidcircle(left + width - r, top + r, r);
-        solidcircle(left + r, top + height - r, r);
-        solidcircle(left + width - r, top + height - r, r);
+        rectangle(left + 2, top + 2, left + width - 2, top + height - 2);
     }
 
     /* 圆形编号 */
     {
-        int numX = left + (int)(18 * ms);
+        int numX = left + (int)(22 * ms);
         int numY = top + height / 2;
         TCHAR num[4];
         _stprintf_s(num, 4, _T("%d"), index + 1);
@@ -711,39 +704,39 @@ static void drawMenuButton(int index, int selected, const TCHAR *text)
             setfillcolor(COLOR_ACCENT);
             solidcircle(numX, numY, numR);
             drawCenteredText(numX - numR, numY - numR, numX + numR, numY + numR,
-                num, (int)(12 * ms), RGB(13, 21, 32));
+                num, (int)(16 * ms), RGB(13, 21, 32));
         } else {
             setfillcolor(COLOR_MENU_NUM);
             solidcircle(numX, numY, numR);
             drawCenteredText(numX - numR, numY - numR, numX + numR, numY + numR,
-                num, (int)(12 * ms), COLOR_TEXT_DIM);
+                num, (int)(16 * ms), COLOR_TEXT_DIM);
         }
     }
 
     /* 文字 */
-    drawTextAt(left + (int)(42 * ms), top + (height - (int)(18 * ms))/2,
-        text, (int)(14 * ms),
+    drawTextAt(left + (int)(50 * ms), top + (height - (int)(22 * ms))/2,
+        text, (int)(18 * ms),
         isSelected ? COLOR_ACCENT : RGB(192, 200, 212));
 }
 
 static void drawSmallButton(int index, bool selected, const TCHAR *text, int count)
 {
     float ms = menuScale();
-    int width = (int)(gWindowWidth * 0.22f);
-    if (width > (int)(220 * ms)) width = (int)(220 * ms);
-    if (width < (int)(130 * ms)) width = (int)(130 * ms);
-    int height = (int)(40 * ms);
-    int gap = (int)(18 * ms);
+    int width = (int)(gWindowWidth * 0.20f);
+    if (width > (int)(200 * ms)) width = (int)(200 * ms);
+    if (width < (int)(120 * ms)) width = (int)(120 * ms);
+    int height = (int)(42 * ms);
+    int gap = (int)(20 * ms);
     int total = count * width + (count - 1) * gap;
     int left = (gWindowWidth - total) / 2 + index * (width + gap);
-    /* 放在主按钮下方：主按钮最后一项底部 + 间距 */
-    int top = (int)(180 * ms) + 4 * ((int)(46 * ms) + (int)(8 * ms)) + (int)(16 * ms);
-    int r = (int)(5 * ms);
+    /* 放在主按钮下方 */
+    int top = (int)(170 * ms) + 4 * ((int)(58 * ms) + (int)(10 * ms)) + (int)(20 * ms);
+    int r = (int)(6 * ms);
 
     if (selected) {
         setfillcolor(index == 2 ? COLOR_MENU_EXIT : COLOR_ACCENT);
     } else {
-        setfillcolor(COLOR_MENU_CARD);
+        setfillcolor(index == 2 ? COLOR_MENU_EXIT : COLOR_MENU_CARD);
     }
     solidrectangle(left + r, top, left + width - r, top + height);
     solidrectangle(left, top + r, left + width, top + height - r);
@@ -752,12 +745,14 @@ static void drawSmallButton(int index, bool selected, const TCHAR *text, int cou
     solidcircle(left + r, top + height - r, r);
     solidcircle(left + width - r, top + height - r, r);
 
-    COLORREF txtColor = selected
-        ? ((index == 2) ? COLOR_DANGER : RGB(13, 21, 32))
-        : RGB(136, 148, 164);
-    if (index == 2 && !selected) txtColor = COLOR_DANGER;
+    COLORREF txtColor;
+    if (selected) {
+        txtColor = (index == 2) ? COLOR_DANGER : RGB(13, 21, 32);
+    } else {
+        txtColor = (index == 2) ? COLOR_DANGER : RGB(136, 148, 164);
+    }
     drawCenteredText(left, top, left + width, top + height, text,
-        (int)(13 * ms), txtColor);
+        (int)(15 * ms), txtColor);
 }
 
 static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TCHAR *value)
@@ -778,11 +773,10 @@ static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TC
     solidcircle(left + width - 5, top + height - 5, 5);
     if (selected) {
         setlinecolor(COLOR_ACCENT);
-        rectangle(left + 5, top, left + width - 5, top + height);
-        rectangle(left, top + 5, left + width, top + height - 5);
+        rectangle(left + 3, top + 3, left + width - 3, top + height - 3);
     }
-    drawTextAt(left + 22, top + 12, label, 18, selected ? COLOR_ACCENT : COLOR_TEXT);
-    drawTextAt(left + width - (int)(gWindowWidth * 0.18f), top + 12, value, 18, COLOR_SCORE);
+    drawTextAt(left + 22, top + (height - 22)/2, label, 20, selected ? COLOR_ACCENT : COLOR_TEXT);
+    drawTextAt(left + width - (int)(gWindowWidth * 0.18f), top + (height - 22)/2, value, 20, COLOR_SCORE);
 }
 
 static void loadTexture(TextureSlot *slot, const TCHAR *folder, TextureId id, int textureSize)
