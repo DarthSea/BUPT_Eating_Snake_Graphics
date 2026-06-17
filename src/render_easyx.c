@@ -1344,7 +1344,6 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
         int fullW = render->windowWidth - 48;
         int fullH = render->windowHeight - BOARD_TOP - 24;
-        int origBoard = boardSize;
         boardSize = minInt(fullW, fullH);
         if (boardSize < 320) boardSize = 320;
         /* 重新计算格子和视口 */
@@ -1354,7 +1353,6 @@ void Render_drawGame(RenderContext *render, const GameState *state,
         visibleCells = boardSize / cellSize;
         if (visibleCells > mapSize) visibleCells = mapSize;
         if (visibleCells < 1) visibleCells = 1;
-        x = BOARD_LEFT + boardSize + 24; /* panelLeft 重新计算 */
     }
     Pos focus = state->player.length > 0 ? state->player.body[0] : state->ai.body[0];
     int startRow = clampViewportStart(focus.row, visibleCells, mapSize);
@@ -1362,6 +1360,10 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     int row;
     int col;
     int x = panelLeft(render, mapSize);
+    /* 多人模式矫正 panelLeft：侧栏不存在时 x 指向棋盘右边缘 */
+    if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
+        x = BOARD_LEFT + boardSize + 24;
+    }
     TCHAR buffer[128];
     static int gLastScore = -1;
     static int gScoreBounceMs = 0;
