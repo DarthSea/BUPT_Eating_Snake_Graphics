@@ -72,6 +72,10 @@ int main(void)
                 Ui_chooseControlsSingle(&input, &render, &config);
             } else if (action == MENU_AI_BATTLE) {
                 Game_applyModeDefaults(&config, MODE_AI_BATTLE);
+                config.p1ControlMethod = CONTROL_KEYBOARD_WASD;
+                if (!Ui_chooseControlsSingle(&input, &render, &config)) {
+                    continue;
+                }
             } else if (action == MENU_TIME_CHALLENGE) {
                 Game_applyModeDefaults(&config, MODE_TIME_CHALLENGE);
                 config.variant = VARIANT_DIVERSE;
