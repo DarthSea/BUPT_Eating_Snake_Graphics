@@ -208,6 +208,23 @@ bool Ui_chooseMapSize(InputContext *input, RenderContext *render, int *mapSize, 
         if (menu.confirm) { *mapSize = (sel == 0) ? 20 : (sel == 1) ? 50 : 100; return true; }
         if (menu.cancel) return false;
 
+        /* 鼠标 hover + 点击 */
+        {
+            float ms = (float)render->windowWidth / 1280.0f;
+            if (ms < 0.85f) ms = 0.85f; if (ms > 1.5f) ms = 1.5f;
+            int sW = (int)(render->windowWidth * 0.20f);
+            if (sW > (int)(200 * ms)) sW = (int)(200 * ms);
+            if (sW < (int)(120 * ms)) sW = (int)(120 * ms);
+            int sH = (int)(42 * ms); int sGap = (int)(20 * ms);
+            int total = maxOpt * sW + (maxOpt - 1) * sGap;
+            int baseL = (render->windowWidth - total) / 2;
+            for (int i = 0; i < maxOpt; i++) {
+                int bx = baseL + i * (sW + sGap);
+                if (Input_mouseInRect(bx, 340, bx + sW, 340 + sH)) sel = i;
+            }
+            if (Input_mouseLeftClicked()) { *mapSize = (sel == 0) ? 20 : (sel == 1) ? 50 : 100; return true; }
+        }
+
         /* 手柄 */
         if (Input_gamepadConnected(0)) {
             Direction d = Input_gamepadDirection(0);
