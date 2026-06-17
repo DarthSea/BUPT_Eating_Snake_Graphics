@@ -8,6 +8,7 @@
 #include "render.h"
 #include "ui.h"
 
+/* 循环索引包装：超出范围时回绕（用于菜单选择循环） */
 static int wrapIndex(int value, int count)
 {
     if (value < 0) {
@@ -20,6 +21,7 @@ static int wrapIndex(int value, int count)
     return value;
 }
 
+/* 主菜单循环：绘制并处理键盘/鼠标/手柄输入，返回选中的菜单动作 */
 MenuAction Ui_runWelcome(InputContext *input, RenderContext *render)
 {
     int selected = 0;
@@ -98,6 +100,7 @@ MenuAction Ui_runWelcome(InputContext *input, RenderContext *render)
     }
 }
 
+/* 地图变体选择菜单：常规/多样，支持键盘/鼠标/手柄 */
 bool Ui_chooseVariant(InputContext *input, RenderContext *render, MapVariant *variant)
 {
     int selected = (int)(*variant);
@@ -155,6 +158,7 @@ bool Ui_chooseVariant(InputContext *input, RenderContext *render, MapVariant *va
     }
 }
 
+/* 双人操控方式选择：P1/P2 分别选择键盘/鼠标/手柄 */
 bool Ui_chooseControls(InputContext *input, RenderContext *render, GameConfig *config)
 {
     int p1Sel = (int)config->p1ControlMethod;
@@ -187,6 +191,7 @@ bool Ui_chooseControls(InputContext *input, RenderContext *render, GameConfig *c
     return true;
 }
 
+/* 地图大小选择：20/50/100（多人模式限制 20/50） */
 bool Ui_chooseMapSize(InputContext *input, RenderContext *render, int *mapSize, bool isMulti)
 {
     int sel = (*mapSize == 50) ? 1 : (*mapSize >= 100 ? 2 : 0);
@@ -214,6 +219,7 @@ bool Ui_chooseMapSize(InputContext *input, RenderContext *render, int *mapSize, 
     }
 }
 
+/* 单人操控方式选择：键盘 WASD/方向键/鼠标/手柄1/手柄2 */
 bool Ui_chooseControlsSingle(InputContext *input, RenderContext *render, GameConfig *config)
 {
     int sel = (int)config->p1ControlMethod;
@@ -264,6 +270,7 @@ bool Ui_chooseControlsSingle(InputContext *input, RenderContext *render, GameCon
     }
 }
 
+/* AI 难度选择：低/中/高，支持键盘/鼠标/手柄 */
 bool Ui_chooseDifficulty(InputContext *input, RenderContext *render, AiDifficulty *difficulty)
 {
     int selected = (int)(*difficulty);
@@ -321,6 +328,7 @@ bool Ui_chooseDifficulty(InputContext *input, RenderContext *render, AiDifficult
     }
 }
 
+/* 皮肤选择：在可用皮肤列表中循环选择并预览 */
 bool Ui_chooseSkin(InputContext *input, RenderContext *render, int *skinId)
 {
     int selected = *skinId;
@@ -383,6 +391,7 @@ bool Ui_chooseSkin(InputContext *input, RenderContext *render, int *skinId)
     }
 }
 
+/* 在 20/50/100 之间按步长切换地图大小 */
 static int nextMapSize(int mapSize, int step)
 {
     static const int sizes[] = { 20, 50, 100 };
@@ -399,6 +408,7 @@ static int nextMapSize(int mapSize, int step)
     return sizes[wrapIndex(index + step, 3)];
 }
 
+/* 在四个分辨率之间按步长循环切换 */
 static DisplayResolution nextResolution(DisplayResolution resolution, int step)
 {
     int selected = (int)resolution;
@@ -410,6 +420,7 @@ static DisplayResolution nextResolution(DisplayResolution resolution, int step)
     return (DisplayResolution)wrapIndex(selected + step, 4);
 }
 
+/* 设置页面循环：处理各配置项的选择与修改（N步增长/分辨率/全屏/音乐/音效） */
 bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *settings)
 {
     int selectedRow = 0;
@@ -486,6 +497,7 @@ bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *sett
     }
 }
 
+/* 消费并播放所有堆积的音效事件（每帧调用一次） */
 static void playPendingSounds(GameState *state)
 {
     SoundEvent events[MAX_SOUND_EVENTS];
@@ -497,6 +509,7 @@ static void playPendingSounds(GameState *state)
     }
 }
 
+/* 根据玩家蛇头位置计算当前视口起始行列和格子大小 */
 static void computeViewport(RenderContext *render, GameState *state,
     int *outStartRow, int *outStartCol, int *outCellSize)
 {
@@ -525,6 +538,7 @@ static void computeViewport(RenderContext *render, GameState *state,
     *outCellSize = cellSize;
 }
 
+/* 根据 P1 操控配置读取方向输入（键盘/鼠标/手柄） */
 static Direction readP1Direction(GameState *state, RenderContext *render)
 {
     if (state->config.p1ControlMethod == CONTROL_MOUSE) {
@@ -543,6 +557,7 @@ static Direction readP1Direction(GameState *state, RenderContext *render)
     }
 }
 
+/* 根据 P2 操控配置读取方向输入（键盘/鼠标/手柄） */
 static Direction readP2Direction(GameState *state, RenderContext *render)
 {
     if (state->config.p2ControlMethod == CONTROL_MOUSE) {
@@ -563,6 +578,7 @@ static Direction readP2Direction(GameState *state, RenderContext *render)
     }
 }
 
+/* 运行一局游戏的主循环：处理输入、更新状态、绘制画面；返回 false 表示中途取消 */
 static bool runOneRound(InputContext *input, RenderContext *render, GameState *state)
 {
     bool paused = false;
@@ -705,6 +721,7 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
     return true;
 }
 
+/* 游戏运行入口：循环运行回合并在 GameOver 时处理重玩/返回菜单 */
 bool Ui_runGame(InputContext *input, RenderContext *render, GameState *state)
 {
     GameConfig config = state->config;

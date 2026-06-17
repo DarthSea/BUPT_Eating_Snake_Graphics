@@ -5,11 +5,13 @@
 
 #include "input.h"
 
+/* 检查虚拟键是否当前处于按下状态 */
 static bool isKeyDown(int virtualKey)
 {
     return (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
 }
 
+/* 检测按键从释放到按下的沿触发（避免每帧重复触发） */
 static bool keyPressed(InputContext *input, int virtualKey)
 {
     bool down;
@@ -26,11 +28,13 @@ static bool keyPressed(InputContext *input, int virtualKey)
     return pressed;
 }
 
+/* 清空输入上下文（重置 keyDown 历史） */
 void Input_init(InputContext *input)
 {
     memset(input, 0, sizeof(*input));
 }
 
+/* 读取玩家一方向：WASD 按键映射到上下左右 */
 Direction Input_readPlayerDirection(void)
 {
     if (isKeyDown('W')) {
@@ -49,6 +53,7 @@ Direction Input_readPlayerDirection(void)
     return DIR_NONE;
 }
 
+/* 读取玩家二方向：方向键映射到上下左右 */
 Direction Input_readPlayer2Direction(void)
 {
     if (isKeyDown(VK_UP)) {
@@ -67,6 +72,7 @@ Direction Input_readPlayer2Direction(void)
     return DIR_NONE;
 }
 
+/* 读取菜单操作：移动、确认、取消、射箭、调速等所有菜单输入 */
 void Input_readMenu(InputContext *input, MenuInput *out)
 {
     bool upPressed;
@@ -115,6 +121,7 @@ static bool gMouseRightPressed = false;
 static bool gMouseLeftDown = false;
 static bool gMouseRightDown = false;
 
+/* 更新鼠标全局状态：坐标、左右键按下/释放沿 */
 void Input_updateMouse(void)
 {
     gMouseLeftPressed = false;
@@ -130,6 +137,7 @@ void Input_updateMouse(void)
     }
 }
 
+/* 判断鼠标坐标是否在指定矩形区域内 */
 bool Input_mouseInRect(int left, int top, int right, int bottom)
 {
     return gMouseX >= left && gMouseX <= right && gMouseY >= top && gMouseY <= bottom;
@@ -138,6 +146,7 @@ bool Input_mouseInRect(int left, int top, int right, int bottom)
 bool Input_mouseLeftClicked(void) { return gMouseLeftPressed; }
 bool Input_mouseRightClicked(void) { return gMouseRightPressed; }
 
+/* 根据鼠标与蛇头相对位置计算方向：用于鼠标操控模式 */
 Direction Input_readMouseDirection(Pos snakeHead, int startRow, int startCol, int cellSize)
 {
     int boardX = gMouseX - BOARD_LEFT;

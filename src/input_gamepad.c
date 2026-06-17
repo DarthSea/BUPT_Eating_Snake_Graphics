@@ -12,6 +12,7 @@ typedef struct GamepadState {
 
 static GamepadState gGamepads[2];
 
+/* 检测指定槽位（0/1）的手柄是否已连接 */
 bool Input_gamepadConnected(int slot)
 {
     if (slot < 0 || slot > 1) return false;
@@ -19,6 +20,7 @@ bool Input_gamepadConnected(int slot)
     return XInputGetState((DWORD)slot, &gGamepads[slot].state) == ERROR_SUCCESS;
 }
 
+/* 检测手柄按钮是否从释放变为按下（上升沿检测） */
 bool Input_gamepadButtonPressed(int slot, WORD buttonMask)
 {
     GamepadState *g = &gGamepads[slot];
@@ -27,6 +29,7 @@ bool Input_gamepadButtonPressed(int slot, WORD buttonMask)
     return now && !prev;
 }
 
+/* 读取手柄左摇杆方向：带死区，优先取绝对值更大的轴 */
 Direction Input_gamepadDirection(int slot)
 {
     GamepadState *g = &gGamepads[slot];

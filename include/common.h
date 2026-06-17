@@ -141,38 +141,41 @@ typedef enum SoundEvent {
     SOUND_ARROW_HIT
 } SoundEvent;
 
+/* 2D 整数坐标，用于格子定位和搜索 */
 typedef struct Pos {
     int row;
     int col;
 } Pos;
 
+/* 蛇的数据：身体数组、生命、得分、道具/战斗资源 */
 typedef struct Snake {
     Pos body[MAX_SNAKE_LEN];
     int length;
-    Direction dir;
-    Direction nextDir;
+    Direction dir;         /* 当前移动方向 */
+    Direction nextDir;     /* 下一帧输入方向，用于缓冲掉头检测 */
     int score;
-    int stepCount;
+    int stepCount;         /* 自上次增长后的步数，用于 interval 增长 */
     bool alive;
 
-    /* Timed effects used by normal modes and battle clock effects. */
+    /* 限时效果计时器，普通模式和战斗 clock 共用 */
     int shieldMs;
     int speedMs;
     int slowMs;
-    int dirChangeCooldownMs;
-    int slowStepCounter;
+    int dirChangeCooldownMs; /* 减速时防止快速来回转向 */
+    int slowStepCounter;     /* 减速时每两帧才走一步 */
 
-    /* AI battle exclusive resources. */
+    /* AI 对战专属资源 */
     int bowArrows;
     int shieldCharges;
 } Snake;
 
+/* 飞行中的箭矢：战斗模式下蛇射出或箭雨事件生成 */
 typedef struct ArrowProjectile {
     bool active;
     Pos pos;
     Direction dir;
-    int ownerIndex;
-    int moveTimerMs;
+    int ownerIndex;    /* PLAYER_INDEX/AI_INDEX，-1 表示箭雨无主箭 */
+    int moveTimerMs;   /* 累积毫秒，达 ARROW_INTERVAL_MS 时前进一格 */
 } ArrowProjectile;
 
 typedef enum RandomEventType {
@@ -181,45 +184,50 @@ typedef enum RandomEventType {
     EVENT_ARROW_STORM
 } RandomEventType;
 
+/* 轰炸区矩形范围，用于炸弹事件的地面标记 */
 typedef struct BombZone {
     int rowStart, rowEnd;
     int colStart, colEnd;
 } BombZone;
 
+/* 箭雨事件的边界发射源：位置和射入方向 */
 typedef struct BorderSource {
     Pos pos;
     Direction dir;
 } BorderSource;
 
+/* 随机事件（轰炸/箭雨）的全状态管理 */
 typedef struct RandomEventState {
     RandomEventType activeEvent;
-    int eventTimerMs;
-    int phaseTimerMs;
-    int sinceLastEventMs;
-    int bombPhase;
-    bool bombActive;
-    int bombFlashMs;
-    bool bombWarning;
-    int bombWarningMs;
-    BombZone zones[3];
+    int eventTimerMs;       /* 事件总剩余时长 */
+    int phaseTimerMs;       /* 阶段计时器 */
+    int sinceLastEventMs;   /* 距上次事件的间隔，用于触发新事件 */
+    int bombPhase;          /* 轰炸轮次 */
+    bool bombActive;        /* 炸弹当前是否处于引爆状态 */
+    int bombFlashMs;        /* 爆炸闪烁剩余时间 */
+    bool bombWarning;       /* 是否为轰炸预警阶段（红色闪烁提示） */
+    int bombWarningMs;      /* 预警闪烁计时 */
+    BombZone zones[3];      /* 最多 3 个轰炸区 */
     int zoneCount;
     BorderSource borderSources[MAX_BORDER_SOURCES];
     int borderSourceCount;
-    bool borderFlashing;
-    int borderFlashMs;
+    bool borderFlashing;    /* 边界闪烁指示 */
+    int borderFlashMs;      /* 边界闪烁剩余毫秒 */
 } RandomEventState;
 
 #define MAX_PARTICLES 200
 
+/* 粒子特效：用于得分弹出、碰撞火花等视觉效果 */
 typedef struct Particle {
     bool active;
-    float x, y;
-    float vx, vy;
-    int lifeMs;
+    float x, y;       /* 屏幕坐标 */
+    float vx, vy;     /* 速度（像素/秒） */
+    int lifeMs;       /* 剩余生命，到期自动灭活 */
     COLORREF color;
     int radius;
 } Particle;
 
+/* 游戏全局配置：模式、难度、分辨率、音频/控制等所有设置 */
 typedef struct GameConfig {
     GameMode mode;
     MapVariant variant;
@@ -228,13 +236,13 @@ typedef struct GameConfig {
     bool fullscreen;
     int skinId;
 
-    /* Runtime map size. Valid values are 20, 50, and 100. */
+    /* 运行时地图尺寸，有效值 20/50/100 */
     int mapSize;
-    int moveIntervalMs;
-    int growthInterval;
-    int timeLimitSeconds;
+    int moveIntervalMs;       /* 基础移动间隔毫秒 */
+    int growthInterval;       /* N 步自动增长间隔 */
+    int timeLimitSeconds;     /* 限时模式剩余秒数 */
 
-    /* If false, snakes grow only after eating food. */
+    /* false 时蛇只靠吃食物增长，不自动增长 */
     bool enableStepGrowth;
     bool musicEnabled;
     bool soundEnabled;
@@ -242,27 +250,28 @@ typedef struct GameConfig {
     ControlMethod p2ControlMethod;
 } GameConfig;
 
+/* 游戏运行时状态：包含地图、蛇、道具、事件等所有动态数据 */
 typedef struct GameState {
-    /* cells stores terrain, food, and items. Snake bodies live in Snake.body. */
+    /* cells 存储地形/食物/道具，蛇身坐标在 Snake.body 中独立维护 */
     CellType cells[MAX_MAP_SIZE][MAX_MAP_SIZE];
     Snake player;
-    Snake ai;
+    Snake ai;           /* AI 或本地 P2 共用此槽位 */
     ArrowProjectile arrows[MAX_ACTIVE_ARROWS];
     GameConfig config;
     GameResult result;
 
-    /* -2..2. Larger means faster movement and higher food reward. */
+    /* 速度档 -2..2，越大移动越快、食物奖励越高 */
     int speedLevel;
-    int moveTimerMs;
-    int elapsedMs;
-    int remainingSeconds;
+    int moveTimerMs;       /* 移动间隔累积计时器 */
+    int elapsedMs;         /* 限时模式已用时间 */
+    int remainingSeconds;  /* 限时模式剩余秒数 */
     unsigned int randomSeed;
 
-    /* Rules register sound events; UI consumes them and plays audio. */
+    /* 逻辑层注册音效事件，UI 层消费并播放 */
     SoundEvent soundEvents[MAX_SOUND_EVENTS];
     int soundEventCount;
-    char statusText[128];
-    RandomEventState event;
+    char statusText[128];      /* 状态栏文字 */
+    RandomEventState event;    /* 随机事件状态 */
     Particle particles[MAX_PARTICLES];
 } GameState;
 

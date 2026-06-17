@@ -183,21 +183,25 @@ static void drawMenuBackground(void)
     drawMenuBgSnakes();
 }
 
+/* 取最小值 */
 static int minInt(int a, int b)
 {
     return a < b ? a : b;
 }
 
+/* 取最大值 */
 static int maxInt(int a, int b)
 {
     return a > b ? a : b;
 }
 
+/* 返回支持的分辨率数量 */
 static int resolutionCount(void)
 {
     return (int)(sizeof(RESOLUTIONS) / sizeof(RESOLUTIONS[0]));
 }
 
+/* 根据 DisplayResolution 枚举查找对应的分辨率信息 */
 static const ResolutionInfo *resolutionInfo(DisplayResolution resolution)
 {
     int i;
@@ -211,6 +215,7 @@ static const ResolutionInfo *resolutionInfo(DisplayResolution resolution)
     return &RESOLUTIONS[1];
 }
 
+/* 获取桌面可用工作区尺寸（排除任务栏），失败则回退到屏幕分辨率 */
 static void getWorkAreaSize(int *width, int *height)
 {
     RECT workArea;
@@ -225,6 +230,7 @@ static void getWorkAreaSize(int *width, int *height)
     *height = GetSystemMetrics(SM_CYSCREEN);
 }
 
+/* 计算窗口化模式下客户区的最大允许尺寸（减去标题栏和边框） */
 static void getWindowedClientLimit(int *width, int *height)
 {
     int workWidth;
@@ -243,6 +249,7 @@ static void getWindowedClientLimit(int *width, int *height)
     *height = maxInt(360, workHeight - frameHeight - 24);
 }
 
+/* 按 16:9 比例将请求尺寸适配到给定的限制范围内 */
 static void fitTo16By9(int requestedWidth, int requestedHeight,
     int limitWidth, int limitHeight, int *width, int *height)
 {
@@ -269,6 +276,7 @@ static void fitTo16By9(int requestedWidth, int requestedHeight,
     *height = fittedHeight;
 }
 
+/* 根据分辨率配置和全屏标志，计算出最终窗口/全屏尺寸 */
 static void resolveDisplaySize(const ResolutionInfo *info, bool fullscreen,
     int *width, int *height)
 {
@@ -288,6 +296,7 @@ static void resolveDisplaySize(const ResolutionInfo *info, bool fullscreen,
     }
 }
 
+/* 根据窗口客户区大小计算棋盘区域像素边长 */
 static int boardPixelSizeForWindow(int windowWidth, int windowHeight)
 {
     int maxBoardWidth = windowWidth - BOARD_LEFT - SIDE_PANEL_WIDTH - 72;
@@ -302,6 +311,7 @@ static int boardPixelSizeForWindow(int windowWidth, int windowHeight)
     return boardSize;
 }
 
+/* 根据全屏/窗口模式设置原生窗口样式和位置 */
 static void applyNativeWindowMode(bool fullscreen, int clientWidth, int clientHeight)
 {
     HWND hwnd = GetHWnd();
@@ -346,6 +356,7 @@ static void applyNativeWindowMode(bool fullscreen, int clientWidth, int clientHe
     }
 }
 
+/* 计算指定地图尺寸下每个格子的像素大小 */
 int Render_cellSizeForMap(const RenderContext *render, int mapSize)
 {
     int cellSize;
@@ -362,6 +373,7 @@ int Render_cellSizeForMap(const RenderContext *render, int mapSize)
     return cellSize < 1 ? 1 : cellSize;
 }
 
+/* 计算在当前屏幕和格大小下可显示的格子行列数 */
 static int visibleCellsForMap(const RenderContext *render, int mapSize, int cellSize)
 {
     int visibleCells;
@@ -378,6 +390,7 @@ static int visibleCellsForMap(const RenderContext *render, int mapSize, int cell
     return visibleCells;
 }
 
+/* 计算地图在屏幕上的实际显示像素大小 */
 static int boardSizeForMap(const RenderContext *render, int mapSize)
 {
     int cellSize = Render_cellSizeForMap(render, mapSize);
@@ -385,11 +398,13 @@ static int boardSizeForMap(const RenderContext *render, int mapSize)
     return visibleCellsForMap(render, mapSize, cellSize) * cellSize;
 }
 
+/* 返回右侧面板的左边沿 X 坐标 */
 static int panelLeft(const RenderContext *render, int mapSize)
 {
     return BOARD_LEFT + boardSizeForMap(render, mapSize) + 24;
 }
 
+/* 计算视口起始行列：将焦点格居中并钳制到地图边界 */
 static int clampViewportStart(int focus, int visibleCells, int mapSize)
 {
     int start = focus - visibleCells / 2;
@@ -407,6 +422,7 @@ static int clampViewportStart(int focus, int visibleCells, int mapSize)
     return start;
 }
 
+/* 判断指定格子是否在当前视口范围内 */
 static bool isInView(Pos pos, int startRow, int startCol, int visibleCells)
 {
     return pos.row >= startRow
@@ -415,12 +431,14 @@ static bool isInView(Pos pos, int startRow, int startCol, int visibleCells)
         && pos.col < startCol + visibleCells;
 }
 
+/* 设置全局字体（微软雅黑 + 透明背景） */
 static void setFont(int size)
 {
     settextstyle(size, 0, _T("Microsoft YaHei"));
     setbkmode(TRANSPARENT);
 }
 
+/* 在指定位置绘制文本（使用 LOGFONT 精确指定字号和抗锯齿） */
 static void drawTextAt(int x, int y, const TCHAR *text, int size, COLORREF color)
 {
     LOGFONT lf = { 0 };
@@ -433,6 +451,7 @@ static void drawTextAt(int x, int y, const TCHAR *text, int size, COLORREF color
     outtextxy(x, y, text);
 }
 
+/* 在指定矩形区域内居中绘制文本 */
 static void drawCenteredText(int left, int top, int right, int bottom,
     const TCHAR *text, int size, COLORREF color)
 {
@@ -621,6 +640,7 @@ static void drawTagIcon(int cx, int cy, int sz, TagIcon icon, COLORREF color)
     }
 }
 
+/* 绘制道具标签：圆角背景 + 图标 + 文字（蛇长/弓箭/护盾） */
 static void drawTag(int x, int y, const TCHAR *label, int value, COLORREF color, float txtScale)
 {
     TCHAR buf[32];
@@ -665,6 +685,7 @@ static float menuScale(void)
     return s;
 }
 
+/* 绘制主菜单按钮：圆角卡片 + 圆形编号 + 文字，选中态高亮 */
 static void drawMenuButton(int index, int selected, const TCHAR *text)
 {
     float ms = menuScale();
@@ -720,6 +741,7 @@ static void drawMenuButton(int index, int selected, const TCHAR *text)
         isSelected ? COLOR_ACCENT : RGB(192, 200, 212));
 }
 
+/* 绘制小型菜单按钮（副菜单/地图选择/难度等） */
 static void drawSmallButton(int index, bool selected, const TCHAR *text, int count)
 {
     float ms = menuScale();
@@ -760,6 +782,7 @@ static void drawSmallButton(int index, bool selected, const TCHAR *text, int cou
         (int)(15 * ms), txtColor);
 }
 
+/* 绘制设置页面的一行：标签 + 值，选中时高亮 */
 static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TCHAR *value)
 {
     int left = gWindowWidth * 12 / 100;
@@ -786,6 +809,7 @@ static void drawSettingsRow(int row, bool selected, const TCHAR *label, const TC
         selected ? RGB(13, 21, 32) : COLOR_SCORE);
 }
 
+/* 加载单个贴图文件，失败则使用预设的退化颜色 */
 static void loadTexture(TextureSlot *slot, const TCHAR *folder, TextureId id, int textureSize)
 {
     TCHAR path[MAX_PATH];
@@ -800,6 +824,7 @@ static void loadTexture(TextureSlot *slot, const TCHAR *folder, TextureId id, in
     }
 }
 
+/* 绘制单个贴图格：使用加载的纹理或退化纯色填充 */
 static void drawTexture(const RenderContext *render, TextureId id, int x, int y, int cellSize)
 {
     const TextureSlot *slot = &render->textures[id];
@@ -813,6 +838,7 @@ static void drawTexture(const RenderContext *render, TextureId id, int x, int y,
     solidrectangle(x, y, x + cellSize, y + cellSize);
 }
 
+/* 绘制棋盘背景：贴图平铺或纯色填充 */
 static void drawBoardBackground(const RenderContext *render, int mapSize)
 {
     int boardSize = boardSizeForMap(render, mapSize);
@@ -839,6 +865,7 @@ static void drawBoardBackground(const RenderContext *render, int mapSize)
     }
 }
 
+/* 绘制地图上单个道具/障碍格子，按 CellType 选择对应贴图 */
 static void drawCell(const RenderContext *render, int row, int col,
     int startRow, int startCol, int cellSize, CellType cell)
 {
@@ -887,6 +914,7 @@ static void drawCell(const RenderContext *render, int row, int col,
     }
 }
 
+/* 绘制飞行中的箭矢：橙色箭头 + 白色描边 + 尾部拖尾 */
 static void drawArrow(const ArrowProjectile *arrow, int startRow, int startCol,
     int visibleCells, int cellSize)
 {
@@ -951,6 +979,7 @@ static void drawArrow(const ArrowProjectile *arrow, int startRow, int startCol,
     solidcircle(tailX, tailY, cellSize / 8);
 }
 
+/* 绘制蛇身：头部和身体使用不同贴图，有护盾时加绿色边框 */
 static void drawSnake(const RenderContext *render, const Snake *snake,
     int startRow, int startCol, int visibleCells, int cellSize, bool player)
 {
@@ -980,6 +1009,7 @@ static void drawSnake(const RenderContext *render, const Snake *snake,
     }
 }
 
+/* 绘制棋盘网格线（格子小于12px时跳过，防止过密） */
 static void drawBoardGrid(const RenderContext *render, int visibleCells, int cellSize)
 {
     int row;
@@ -1001,6 +1031,7 @@ static void drawBoardGrid(const RenderContext *render, int visibleCells, int cel
     }
 }
 
+/* 返回游戏模式的中文名称 */
 static const TCHAR *modeText(GameMode mode)
 {
     switch (mode) {
@@ -1017,11 +1048,13 @@ static const TCHAR *modeText(GameMode mode)
     }
 }
 
+/* 返回地图变体的中文名称 */
 static const TCHAR *variantText(MapVariant variant)
 {
     return variant == VARIANT_DIVERSE ? _T("多样模式") : _T("常规模式");
 }
 
+/* 返回 AI 难度的中文名称 */
 static const TCHAR *difficultyText(AiDifficulty difficulty)
 {
     switch (difficulty) {
@@ -1036,6 +1069,7 @@ static const TCHAR *difficultyText(AiDifficulty difficulty)
     }
 }
 
+/* 初始化 EasyX 渲染窗口：计算尺寸、设置全屏/窗口模式、加载皮肤 */
 bool Render_init(RenderContext *render, int skinId)
 {
     const ResolutionInfo *info;
@@ -1062,17 +1096,20 @@ bool Render_init(RenderContext *render, int skinId)
     return Render_loadSkin(render, skinId);
 }
 
+/* 关闭 EasyX 渲染窗口，结束批量绘制 */
 void Render_shutdown(void)
 {
     EndBatchDraw();
     closegraph();
 }
 
+/* 应用分辨率更改（保持全屏状态不变） */
 bool Render_applyResolution(RenderContext *render, DisplayResolution resolution)
 {
     return Render_applyDisplayMode(render, resolution, render->fullscreen);
 }
 
+/* 应用显示模式：切换分辨率 + 全屏/窗口，重建窗口并重新加载贴图 */
 bool Render_applyDisplayMode(RenderContext *render, DisplayResolution resolution, bool fullscreen)
 {
     const ResolutionInfo *info = resolutionInfo(resolution);
@@ -1108,6 +1145,7 @@ bool Render_applyDisplayMode(RenderContext *render, DisplayResolution resolution
     return Render_loadSkin(render, render->skinId);
 }
 
+/* 加载指定皮肤的所有贴图文件（地面/墙壁/道具/蛇头身等） */
 bool Render_loadSkin(RenderContext *render, int skinId)
 {
     int i;
@@ -1132,11 +1170,13 @@ bool Render_loadSkin(RenderContext *render, int skinId)
     return true;
 }
 
+/* 返回可用皮肤的数量 */
 int Render_skinCount(void)
 {
     return (int)(sizeof(SKINS) / sizeof(SKINS[0]));
 }
 
+/* 返回指定皮肤的中文显示名称 */
 const TCHAR *Render_skinDisplayName(int skinId)
 {
     if (skinId < 0 || skinId >= Render_skinCount()) {
@@ -1146,11 +1186,13 @@ const TCHAR *Render_skinDisplayName(int skinId)
     return SKINS[skinId].name;
 }
 
+/* 返回指定分辨率的中文显示名称 */
 const TCHAR *Render_resolutionDisplayName(DisplayResolution resolution)
 {
     return resolutionInfo(resolution)->name;
 }
 
+/* 确保贴图大小与当前格子大小一致，不一致则重新加载 */
 static void ensureGameTextureSize(RenderContext *render, int cellSize)
 {
     if (render->textureCellSize == cellSize) {
@@ -1161,6 +1203,7 @@ static void ensureGameTextureSize(RenderContext *render, int cellSize)
     Render_loadSkin(render, render->skinId);
 }
 
+/* 绘制主菜单欢迎界面：标题、四个模式按钮、副按钮、背景装饰蛇 */
 void Render_drawWelcome(int selected)
 {
     static const TCHAR *MAIN_OPTIONS[] = {
@@ -1205,6 +1248,7 @@ void Render_drawWelcome(int selected)
     FlushBatchDraw();
 }
 
+/* 绘制地图大小选择菜单：20/50/100（多人限制 20/50） */
 void Render_drawMapSizeMenu(int selected, bool isMulti)
 {
     static const TCHAR *SIZES[] = { _T("20 x 20"), _T("50 x 50"), _T("100 x 100") };
@@ -1221,6 +1265,7 @@ void Render_drawMapSizeMenu(int selected, bool isMulti)
     FlushBatchDraw();
 }
 
+/* 绘制玩法规则选择菜单：常规模式 / 多样模式 */
 void Render_drawVariantMenu(MapVariant selected)
 {
     updateMenuBgSnakes(16);
@@ -1232,6 +1277,7 @@ void Render_drawVariantMenu(MapVariant selected)
     FlushBatchDraw();
 }
 
+/* 绘制 AI 难度选择菜单：低 / 中 / 高 */
 void Render_drawDifficultyMenu(AiDifficulty selected)
 {
     updateMenuBgSnakes(16);
@@ -1244,6 +1290,7 @@ void Render_drawDifficultyMenu(AiDifficulty selected)
     FlushBatchDraw();
 }
 
+/* 绘制皮肤选择菜单：列出所有皮肤名称供选择 */
 void Render_drawSkinMenu(int selectedSkin)
 {
     int i;
@@ -1258,6 +1305,7 @@ void Render_drawSkinMenu(int selectedSkin)
     FlushBatchDraw();
 }
 
+/* 绘制设置页面：N步增长/分辨率/全屏/音乐/音效的行列表 */
 void Render_drawSettings(const GameConfig *config, int selectedRow)
 {
     TCHAR value[64];
@@ -1283,6 +1331,7 @@ void Render_drawSettings(const GameConfig *config, int selectedRow)
     FlushBatchDraw();
 }
 
+/* 绘制游戏主画面：棋盘背景/道具/蛇/箭矢/HUD 侧栏/事件特效/提示覆盖 */
 void Render_drawGame(RenderContext *render, const GameState *state,
     bool paused, bool waitingForStart)
 {
@@ -1912,6 +1961,7 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     FlushBatchDraw();
 }
 
+/* 绘制游戏结束画面：结果标题、双方得分、重玩/返回按钮 */
 void Render_drawGameOver(const GameState *state, int selectedAction)
 {
     TCHAR score[128];
@@ -1951,6 +2001,7 @@ void Render_drawGameOver(const GameState *state, int selectedAction)
     FlushBatchDraw();
 }
 
+/* 绘制双人操控方式选择界面（P1/P2 分列显示五个操控选项） */
 void Render_drawControlSelect(RenderContext *render, int p1Sel, int p2Sel, const GameConfig *config)
 {
     static const TCHAR *CONTROL_NAMES[] = {
@@ -2017,6 +2068,7 @@ void Render_drawControlSelect(RenderContext *render, int p1Sel, int p2Sel, const
     FlushBatchDraw();
 }
 
+/* 绘制单人操控方式选择界面（居中单列五个操控选项） */
 void Render_drawControlSelectSingle(RenderContext *render, int selected)
 {
     static const TCHAR *CONTROL_NAMES[] = {
@@ -2065,11 +2117,13 @@ void Render_drawControlSelectSingle(RenderContext *render, int selected)
 
 static Particle gParticles[MAX_PARTICLES];
 
+/* 清空所有粒子，初始化粒子数组 */
 void Render_particlesInit(void)
 {
     memset(gParticles, 0, sizeof(gParticles));
 }
 
+/* 更新所有活跃粒子：移动、衰减生命、缩小（生命 < 500ms 时线性缩小） */
 void Render_particlesUpdate(int deltaMs)
 {
     int i;
@@ -2088,6 +2142,7 @@ void Render_particlesUpdate(int deltaMs)
     }
 }
 
+/* 绘制所有活跃粒子（实心圆） */
 void Render_particlesDraw(void)
 {
     int i;
@@ -2099,6 +2154,7 @@ void Render_particlesDraw(void)
     }
 }
 
+/* 在指定屏幕坐标生成 count 个粒子（随机速度和大小，用于视觉反馈） */
 void Render_spawnParticles(int screenX, int screenY, int count,
     COLORREF color, int lifeMs)
 {

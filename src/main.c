@@ -9,6 +9,7 @@
 
 static GameState gState;
 
+/* 全局异常捕获：崩溃时写入日志并弹窗提示 */
 static LONG WINAPI handleCrash(EXCEPTION_POINTERS *exceptionInfo)
 {
     FILE *file = fopen("snake_crash.log", "a");
@@ -27,6 +28,7 @@ static LONG WINAPI handleCrash(EXCEPTION_POINTERS *exceptionInfo)
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+/* 游戏入口：初始化渲染/音频/输入，循环主菜单到游戏流程 */
 int main(void)
 {
     RenderContext render;

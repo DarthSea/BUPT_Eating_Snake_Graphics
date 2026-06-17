@@ -14,6 +14,7 @@ static bool posEquals(Pos a, Pos b)
     return a.row == b.row && a.col == b.col;
 }
 
+/* 炸弹是否正在该位置引爆（活跃 + 在区内），护盾无效则致命 */
 static bool isBombDanger(const GameState *state, Pos pos)
 {
     return state->event.activeEvent == EVENT_BOMBARDMENT
@@ -21,12 +22,14 @@ static bool isBombDanger(const GameState *state, Pos pos)
         && Game_isInBombZone(state, pos);
 }
 
+/* 炸弹事件是否活跃且该位置在轰炸区内（不论是否引爆） */
 static bool isBombZoneActive(const GameState *state, Pos pos)
 {
     return state->event.activeEvent == EVENT_BOMBARDMENT
         && Game_isInBombZone(state, pos);
 }
 
+/* 判断 AI 蛇能否进入该位置：墙/障碍/陷阱/尖刺/轰炸区视为阻塞 */
 static bool terrainBlocks(const GameState *state, const Snake *snake, Pos pos)
 {
     CellType cell;
@@ -54,6 +57,7 @@ static bool terrainBlocks(const GameState *state, const Snake *snake, Pos pos)
     return false;
 }
 
+/* 预测蛇走一步后是否会增长：吃食物或触发 interval 增长 */
 static bool candidateWillGrow(const GameState *state, const Snake *snake, Pos next)
 {
     CellType cell = state->cells[next.row][next.col];
@@ -64,6 +68,7 @@ static bool candidateWillGrow(const GameState *state, const Snake *snake, Pos ne
     return Game_itemGrows(cell) || intervalGrow;
 }
 
+/* 检查某方向对 AI 是否安全：不会撞墙/自撞/撞玩家/进轰炸区 */
 static bool isSafeCandidate(const GameState *state, Direction dir)
 {
     const Snake *ai = &state->ai;
@@ -95,6 +100,7 @@ static bool isSafeCandidate(const GameState *state, Direction dir)
     return true;
 }
 
+/* 为 AI 估值道具：战斗道具权重高于普通食物 */
 static int itemValueForAi(CellType cell)
 {
     if (cell == CELL_BATTLE_BOW) {
@@ -113,6 +119,7 @@ static int itemValueForAi(CellType cell)
     return Game_itemScore(cell);
 }
 
+/* 全图扫描找到距离+价值最优的道具位置；跳过活跃轰炸区内的物品 */
 static bool findBestItemByDistance(const GameState *state, Pos from, Pos *target)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
@@ -152,6 +159,7 @@ static bool findBestItemByDistance(const GameState *state, Pos from, Pos *target
     return found;
 }
 
+/* BFS 泛洪：计算 AI 走一步后可达的空地面积（评估生存空间） */
 static int floodAreaAfterMove(const GameState *state, Pos start, bool grow)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
@@ -211,6 +219,7 @@ static int floodAreaAfterMove(const GameState *state, Pos start, bool grow)
     return count;
 }
 
+/* BFS 计算两点之间的最短路径步数；includePlayer 决定是否避开玩家 */
 static int bfsDistance(const GameState *state, Pos start, Pos target, bool includePlayer)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
@@ -274,6 +283,7 @@ static int bfsDistance(const GameState *state, Pos start, Pos target, bool inclu
     return 9999;
 }
 
+/* BFS 寻路：返回从 start 到 target 的第一步方向，失败返回 DIR_NONE */
 static Direction bfsFirstStepTo(const GameState *state, Pos start, Pos target)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
@@ -338,6 +348,7 @@ static Direction bfsFirstStepTo(const GameState *state, Pos start, Pos target)
     return DIR_NONE;
 }
 
+/* 在所有安全方向中选择泛洪面积最大的方向（生存优先） */
 static Direction bestAreaDirection(const GameState *state)
 {
     Direction bestDir = DIR_NONE;
@@ -366,6 +377,7 @@ static Direction bestAreaDirection(const GameState *state)
     return bestDir;
 }
 
+/* 简单难度：贪心选择离最近食物曼哈顿距离最小的方向 */
 static Direction decideEasy(const GameState *state)
 {
     Pos target;
@@ -397,6 +409,7 @@ static Direction decideEasy(const GameState *state)
     return bestDir == DIR_NONE ? bestAreaDirection(state) : bestDir;
 }
 
+/* 中等难度：BFS 找最佳道具 + 泛洪面积验证路径安全性 */
 static Direction decideMedium(const GameState *state)
 {
     Pos target;
@@ -416,6 +429,7 @@ static Direction decideMedium(const GameState *state)
     return bestAreaDirection(state);
 }
 
+/* 统计 AI 走一步后玩家还剩多少合法移动方向（越少对 AI 越有利） */
 static int countPlayerLegalMovesAfterAiStep(const GameState *state, Pos aiNext)
 {
     const Snake *player = &state->player;
@@ -465,6 +479,7 @@ static int countPlayerLegalMovesAfterAiStep(const GameState *state, Pos aiNext)
     return legal;
 }
 
+/* 计算从指定位置到最近食物的 BFS 距离 */
 static int bestFoodDistanceFrom(const GameState *state, Pos from)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
@@ -491,6 +506,7 @@ static int bestFoodDistanceFrom(const GameState *state, Pos from)
     return best;
 }
 
+/* 困难难度：对候选方向综合评分（面积、食物距离、威胁、道具价值、边界安全） */
 static int hardCandidateScore(const GameState *state, Direction dir)
 {
     Pos next;
@@ -620,6 +636,7 @@ static int hardCandidateScore(const GameState *state, Direction dir)
     return score;
 }
 
+/* 困难难度：遍历四个方向计算综合评分，选择最高分方向 */
 static Direction decideHard(const GameState *state)
 {
     Direction bestDir = DIR_NONE;
@@ -639,6 +656,7 @@ static Direction decideHard(const GameState *state)
     return bestDir == DIR_NONE ? bestAreaDirection(state) : bestDir;
 }
 
+/* AI 方向决策入口：按难度分发到不同的策略函数 */
 Direction Ai_decideDirection(const GameState *state, AiDifficulty difficulty)
 {
     Direction dir;

@@ -1,5 +1,6 @@
 #include "common.h"
 
+/* 返回模式枚举对应的英文名称 */
 const char *Common_modeName(GameMode mode)
 {
     switch (mode) {
@@ -16,6 +17,7 @@ const char *Common_modeName(GameMode mode)
     }
 }
 
+/* 返回变体枚举对应的英文名称 */
 const char *Common_variantName(MapVariant variant)
 {
     switch (variant) {
@@ -28,6 +30,7 @@ const char *Common_variantName(MapVariant variant)
     }
 }
 
+/* 返回 AI 难度枚举对应的英文名称 */
 const char *Common_aiDifficultyName(AiDifficulty difficulty)
 {
     switch (difficulty) {
@@ -42,6 +45,7 @@ const char *Common_aiDifficultyName(AiDifficulty difficulty)
     }
 }
 
+/* 返回游戏结果枚举对应的英文名称 */
 const char *Common_resultName(GameResult result)
 {
     switch (result) {
@@ -66,6 +70,7 @@ const char *Common_resultName(GameResult result)
     }
 }
 
+/* 判断两个方向是否互为反向（例如 UP<->DOWN） */
 bool Common_isOpposite(Direction a, Direction b)
 {
     return (a == DIR_UP && b == DIR_DOWN)
@@ -74,6 +79,7 @@ bool Common_isOpposite(Direction a, Direction b)
         || (a == DIR_RIGHT && b == DIR_LEFT);
 }
 
+/* 返回从 pos 向 dir 方向移动一步后的坐标（无边界检查） */
 Pos Common_nextPos(Pos pos, Direction dir)
 {
     Pos next = pos;
@@ -98,6 +104,7 @@ Pos Common_nextPos(Pos pos, Direction dir)
     return next;
 }
 
+/* 返回两点之间的曼哈顿距离（|rowDiff| + |colDiff|） */
 int Common_manhattan(Pos a, Pos b)
 {
     int rowDiff = a.row - b.row;

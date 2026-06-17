@@ -13,6 +13,7 @@ static bool gMusicEnabled = true;
 static bool gSoundEnabled = true;
 static bool gMusicOpened = false;
 
+/* 根据音效事件枚举返回对应的音频文件路径 */
 static const TCHAR *soundPath(SoundEvent event)
 {
     switch (event) {
@@ -41,6 +42,7 @@ static const TCHAR *soundPath(SoundEvent event)
     }
 }
 
+/* 初始化音频系统：设置开关并开始播放背景音乐 */
 void Audio_init(bool musicEnabled, bool soundEnabled)
 {
     gMusicEnabled = musicEnabled;
@@ -48,11 +50,13 @@ void Audio_init(bool musicEnabled, bool soundEnabled)
     Audio_playMusic();
 }
 
+/* 关闭音频：停止背景音乐 */
 void Audio_shutdown(void)
 {
     Audio_stopMusic();
 }
 
+/* 设置背景音乐开关：开启时重新播放，关闭时停止 */
 void Audio_setMusicEnabled(bool enabled)
 {
     gMusicEnabled = enabled;
@@ -63,11 +67,13 @@ void Audio_setMusicEnabled(bool enabled)
     }
 }
 
+/* 设置音效开关 */
 void Audio_setSoundEnabled(bool enabled)
 {
     gSoundEnabled = enabled;
 }
 
+/* 播放背景音乐：通过 MCI 命令打开并循环播放 bgm.wav */
 void Audio_playMusic(void)
 {
     if (!gMusicEnabled || _taccess(_T("assets\\audio\\bgm.wav"), 0) != 0) {
@@ -85,6 +91,7 @@ void Audio_playMusic(void)
     mciSendString(_T("play snake_bgm repeat"), NULL, 0, NULL);
 }
 
+/* 停止背景音乐：MCI 停止并关闭 bgm 资源 */
 void Audio_stopMusic(void)
 {
     if (!gMusicOpened) {
@@ -96,6 +103,7 @@ void Audio_stopMusic(void)
     gMusicOpened = false;
 }
 
+/* 播放单个音效事件：异步播放对应 WAV 文件 */
 void Audio_playEvent(SoundEvent event)
 {
     const TCHAR *path;

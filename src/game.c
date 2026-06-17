@@ -22,22 +22,26 @@ static int gPerfAccumMs = 0;
 static int gPerfFrameCount = 0;
 static bool gUseParticles = true;
 
+/* 判断两坐标是否相同 */
 static bool posEquals(Pos a, Pos b)
 {
     return a.row == b.row && a.col == b.col;
 }
 
+/* 检查地形是否阻挡箭矢飞行 */
 static bool terrainBlocksArrow(CellType cell)
 {
     return cell == CELL_WALL || cell == CELL_OBSTACLE;
 }
 
+/* LCG 伪随机数生成器：每次调用推进一个状态 */
 static unsigned int nextRandom(GameState *state)
 {
     state->randomSeed = state->randomSeed * 1103515245u + 12345u;
     return state->randomSeed;
 }
 
+/* 生成 [0, limit) 范围内的伪随机整数 */
 static int randomRange(GameState *state, int limit)
 {
     if (limit <= 0) {
@@ -48,11 +52,13 @@ static int randomRange(GameState *state, int limit)
     return (int)((nextRandom(state) >> 16) % (unsigned int)limit);
 }
 
+/* 获取标准化的地图尺寸 */
 static int mapSizeOf(const GameState *state)
 {
     return Game_validMapSize(state->config.mapSize);
 }
 
+/* 计算当前地图下蛇的最大长度 = 地图面积 */
 static int maxSnakeLengthOf(const GameState *state)
 {
     int mapSize = mapSizeOf(state);
@@ -60,6 +66,7 @@ static int maxSnakeLengthOf(const GameState *state)
     return mapSize * mapSize;
 }
 
+/* 按地图面积比例缩放数量，保证至少不低于 baseCount */
 static int scaledCountForMap(const GameState *state, int baseCount)
 {
     int mapSize = mapSizeOf(state);
@@ -83,6 +90,7 @@ static int diverseItemTarget(const GameState *state, int baseCount)
     return baseCount;
 }
 
+/* 计算普通食物应在地图上的目标数量 */
 static int normalFoodTarget(const GameState *state)
 {
     int mapSize = mapSizeOf(state);
@@ -97,6 +105,7 @@ static int normalFoodTarget(const GameState *state)
     return 1;
 }
 
+/* 计算战斗道具在地图上的目标数量（按地图比例系数缩放） */
 static int battleItemTarget(const GameState *state, int baseCount)
 {
     int mapSize = mapSizeOf(state);
@@ -111,11 +120,13 @@ static int battleItemTarget(const GameState *state, int baseCount)
     return baseCount;
 }
 
+/* 设置游戏状态文本（用于 HUD 和日志） */
 static void setStatus(GameState *state, const char *text)
 {
     snprintf(state->statusText, sizeof(state->statusText), "%s", text);
 }
 
+/* 初始化地图：边界设为墙，内部清空 */
 static void clearCells(GameState *state)
 {
     int mapSize = mapSizeOf(state);
@@ -133,6 +144,7 @@ static void clearCells(GameState *state)
     }
 }
 
+/* 初始化蛇：长度为 3，头部在 head，身体向 dir 反方向延伸 */
 static void initSnake(Snake *snake, Pos head, Direction dir)
 {
     int i;
@@ -161,6 +173,7 @@ static void initSnake(Snake *snake, Pos head, Direction dir)
     }
 }
 
+/* 检查某位置是否可以生成道具：在界内、为空地、无蛇占据 */
 static bool isSpawnFree(const GameState *state, Pos pos)
 {
     if (!Game_isInside(state, pos)) {
@@ -176,6 +189,7 @@ static bool isSpawnFree(const GameState *state, Pos pos)
     return true;
 }
 
+/* 在地图上找一个空闲位置放置指定道具（两阶段搜索） */
 static bool spawnSpecificItem(GameState *state, CellType item)
 {
     int mapSize = mapSizeOf(state);
@@ -219,6 +233,7 @@ static bool spawnSpecificItem(GameState *state, CellType item)
     return false;
 }
 
+/* 统计地图上指定类型道具的数量 */
 static int countCellType(const GameState *state, CellType item)
 {
     int mapSize = mapSizeOf(state);
@@ -237,6 +252,7 @@ static int countCellType(const GameState *state, CellType item)
     return count;
 }
 
+/* 补充普通模式道具：食物、增益道具、陷阱，低于目标则生成 */
 static void maintainNormalItems(GameState *state)
 {
     int foodTarget = normalFoodTarget(state);
@@ -280,6 +296,7 @@ static void maintainNormalItems(GameState *state)
     }
 }
 
+/* 补充战斗模式道具：食物、弓、盾、尖刺、时钟，低于目标则生成 */
 static void maintainBattleItems(GameState *state)
 {
     int foodTarget = normalFoodTarget(state);
@@ -315,6 +332,7 @@ static void maintainBattleItems(GameState *state)
     }
 }
 
+/* 道具维护调度：根据模式选择普通或战斗道具补充 */
 static void maintainItems(GameState *state)
 {
     if (state->config.mode == MODE_AI_BATTLE || state->config.mode == MODE_LOCAL_MULTIPLAYER) {
@@ -384,6 +402,7 @@ static bool obstacleNearSpawnOk(const GameState *state, Pos pos)
     return true;
 }
 
+/* 在地图上放置障碍物：随机尝试 + 兜底扫描，避开出生点周围 */
 static void placeObstacles(GameState *state)
 {
     int mapSize = mapSizeOf(state);
@@ -432,6 +451,7 @@ static void placeObstacles(GameState *state)
     }
 }
 
+/* 统计前 upTo 个轰炸区的总格子数 */
 static int totalPlacedSoFar(const GameState *state, int upTo)
 {
     int i, total = 0;
@@ -443,6 +463,7 @@ static int totalPlacedSoFar(const GameState *state, int upTo)
     return total;
 }
 
+/* 计算实际移动间隔：考虑速度档、加速/减速道具的综合影响 */
 static int effectiveMoveInterval(const GameState *state)
 {
     int interval = state->config.moveIntervalMs;
@@ -472,6 +493,7 @@ static int effectiveMoveInterval(const GameState *state)
     return interval;
 }
 
+/* 减少蛇身上所有限时效果的剩余毫秒 */
 static void reduceEffectTimers(Snake *snake, int deltaMs)
 {
     if (snake->shieldMs > 0) {
@@ -501,6 +523,7 @@ static void reduceEffectTimers(Snake *snake, int deltaMs)
     }
 }
 
+/* 设置蛇的方向：阻止反向并处理减速冷却限制 */
 static void setSnakeDirectionWithSlow(Snake *snake, Direction dir)
 {
     if (dir == DIR_NONE) {
@@ -519,6 +542,7 @@ static void setSnakeDirectionWithSlow(Snake *snake, Direction dir)
     }
 }
 
+/* 减速时每两帧走一步：交替返回 true/false */
 static bool snakeMovesThisBattleStep(Snake *snake)
 {
     if (snake->slowMs <= 0) {
@@ -529,6 +553,7 @@ static bool snakeMovesThisBattleStep(Snake *snake)
     return snake->slowStepCounter == 0;
 }
 
+/* 构建蛇的单步移动计划：计算下一步位置、碰撞判定、是否增长 */
 static StepPlan buildStepPlan(const GameState *state, const Snake *snake)
 {
     StepPlan plan;
@@ -593,6 +618,7 @@ static StepPlan buildStepPlan(const GameState *state, const Snake *snake)
     return plan;
 }
 
+/* 构建蛇的停顿计划：减速时本帧不行走，头部原地不动 */
 static StepPlan buildStayPlan(const Snake *snake)
 {
     StepPlan plan;
@@ -606,6 +632,7 @@ static StepPlan buildStayPlan(const Snake *snake)
     return plan;
 }
 
+/* 检测某蛇身（考虑尾部离开）是否占据指定格 */
 static bool snakeBlocksBattleCell(const Snake *snake, Pos pos, bool tailWillLeave)
 {
     int i;
@@ -629,6 +656,7 @@ static bool snakeBlocksBattleCell(const Snake *snake, Pos pos, bool tailWillLeav
     return false;
 }
 
+/* 单人模式碰撞检测：蛇头碰到自己身体即死亡 */
 static void addSingleSnakeCollisions(const GameState *state, StepPlan *plan)
 {
     if (plan->dead) {
@@ -640,6 +668,7 @@ static void addSingleSnakeCollisions(const GameState *state, StepPlan *plan)
     }
 }
 
+/* 对战模式碰撞检测：双方蛇头对撞、碰到自身或对方身体 */
 static void addBattleCollisions(const GameState *state, StepPlan *playerPlan, StepPlan *aiPlan)
 {
     bool playerTailLeaves = !playerPlan->stays && !playerPlan->grow && !playerPlan->dead;
@@ -674,6 +703,7 @@ static void addBattleCollisions(const GameState *state, StepPlan *playerPlan, St
     }
 }
 
+/* 将蛇的移动应用到地图：头部插入新位置，若不增长则丢弃尾部 */
 static void applySnakeMove(GameState *state, Snake *snake, const StepPlan *plan)
 {
     int i;
@@ -712,6 +742,7 @@ static void applySnakeMove(GameState *state, Snake *snake, const StepPlan *plan)
     }
 }
 
+/* 计算道具的得分值：基础分乘以速度和模式修正系数 */
 static int scoreForItem(const GameState *state, CellType item)
 {
     int baseScore = Game_itemScore(item);
@@ -734,6 +765,7 @@ static int scoreForItem(const GameState *state, CellType item)
     return score < 1 ? 1 : score;
 }
 
+/* 处理蛇吃到道具后的效果：加分、获得状态、触发音效 */
 static void applyItemEffect(GameState *state, Snake *snake, Snake *opponent, const StepPlan *plan)
 {
     if (plan->dead) {
@@ -796,6 +828,7 @@ static void applyItemEffect(GameState *state, Snake *snake, Snake *opponent, con
     state->cells[plan->next.row][plan->next.col] = CELL_EMPTY;
 }
 
+/* 检查游戏是否应结束：蛇死亡、时间到等情况 */
 static void finishIfNeeded(GameState *state)
 {
     if (state->config.mode == MODE_AI_BATTLE || state->config.mode == MODE_LOCAL_MULTIPLAYER) {
@@ -821,6 +854,7 @@ static void finishIfNeeded(GameState *state)
     }
 }
 
+/* 在蛇身上查找指定位置，返回段索引，未找到返回 -1 */
 static int findSnakeSegmentAt(const Snake *snake, Pos pos)
 {
     int i;
@@ -915,6 +949,7 @@ static void applyArrowHit(GameState *state, ArrowProjectile *arrow)
     }
 }
 
+/* 更新所有活跃箭矢：按计时器推进位置并检测碰撞 */
 static void updateArrows(GameState *state, int deltaMs)
 {
     int i;
@@ -937,6 +972,7 @@ static void updateArrows(GameState *state, int deltaMs)
     }
 }
 
+/* 单人模式单步处理：玩家移动、碰撞、道具效果、维护 */
 static void stepSingle(GameState *state)
 {
     StepPlan playerPlan = buildStepPlan(state, &state->player);
@@ -950,6 +986,7 @@ static void stepSingle(GameState *state)
     }
 }
 
+/* 战斗模式单步处理：AI决策、双方移动、碰撞检测、物品处理 */
 static void stepBattle(GameState *state)
 {
     StepPlan playerPlan;
@@ -987,6 +1024,7 @@ static void stepBattle(GameState *state)
     }
 }
 
+/* 本地多人模式单步处理：双方玩家移动、碰撞检测、物品处理 */
 static void stepLocalMultiplayer(GameState *state)
 {
     StepPlan p1Plan;
@@ -1013,6 +1051,7 @@ static void stepLocalMultiplayer(GameState *state)
     }
 }
 
+/* 创建默认游戏配置：单人经典模式、中等难度、HD+ 分辨率 */
 void Game_makeDefaultConfig(GameConfig *config)
 {
     memset(config, 0, sizeof(*config));
@@ -1031,6 +1070,7 @@ void Game_makeDefaultConfig(GameConfig *config)
     config->soundEnabled = true;
 }
 
+/* 根据游戏模式设置默认参数：速度、时间限制等 */
 void Game_applyModeDefaults(GameConfig *config, GameMode mode)
 {
     config->mode = mode;
@@ -1055,6 +1095,7 @@ void Game_applyModeDefaults(GameConfig *config, GameMode mode)
     }
 }
 
+/* 初始化游戏状态：清地图、生成蛇、摆障碍、补道具 */
 void Game_init(GameState *state, const GameConfig *config)
 {
     unsigned int seed;
@@ -1101,6 +1142,7 @@ void Game_init(GameState *state, const GameConfig *config)
     memset(&state->event, 0, sizeof(state->event));
 }
 
+/* 判断当前模式/变体是否应该触发随机事件 */
 static bool shouldTriggerEvent(const GameState *state)
 {
     if (state->config.variant != VARIANT_DIVERSE) {
@@ -1115,6 +1157,7 @@ static bool shouldTriggerEvent(const GameState *state)
     return true;
 }
 
+/* 检查给定位置是否在任意一个轰炸区内 */
 static bool isInBombZone(const RandomEventState *event, Pos pos)
 {
     int i;
@@ -1127,6 +1170,7 @@ static bool isInBombZone(const RandomEventState *event, Pos pos)
     return false;
 }
 
+/* 初始化轰炸事件：划分 3 个轰炸区，覆盖地图约 1/4 面积 */
 static void initBombardment(GameState *state, int mapSize)
 {
     int totalCells = mapSize * mapSize;
@@ -1173,6 +1217,7 @@ static void initBombardment(GameState *state, int mapSize)
     state->event.phaseTimerMs = 0;
 }
 
+/* 初始化箭雨事件：在四周边界随机生成箭矢发射源 */
 static void initArrowStorm(GameState *state, int mapSize)
 {
     int target = mapSize / 2;
@@ -1226,6 +1271,7 @@ static void initArrowStorm(GameState *state, int mapSize)
 
 static bool spawnBorderArrow(GameState *state, Pos from, Direction dir);
 
+/* 随机触发一个事件：轰炸或箭雨，持续 12 秒 */
 static void startRandomEvent(GameState *state)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
@@ -1247,6 +1293,7 @@ static void startRandomEvent(GameState *state)
     setStatus(state, r == 0 ? "Bombardment!" : "Arrow Storm!");
 }
 
+/* 更新随机事件逻辑：计时触发新事件、处理轰炸/箭雨阶段 */
 static void updateRandomEvents(GameState *state, int deltaMs)
 {
     RandomEventState *ev = &state->event;
@@ -1329,6 +1376,7 @@ static void updateRandomEvents(GameState *state, int deltaMs)
     }
 }
 
+/* 根据玩家选择的初始方向重新排布蛇身并清除旧格子 */
 void Game_preparePlayerStart(GameState *state, Direction dir)
 {
     Snake *snake = &state->player;
@@ -1362,6 +1410,7 @@ void Game_preparePlayerStart(GameState *state, Direction dir)
     }
 }
 
+/* 根据 P2 选择的初始方向重新排布其蛇身并清除旧格子 */
 void Game_prepareP2Start(GameState *state, Direction dir)
 {
     Snake *snake = &state->ai;
@@ -1395,6 +1444,7 @@ void Game_prepareP2Start(GameState *state, Direction dir)
     }
 }
 
+/* 设置玩家蛇方向：仅在游戏进行中有效 */
 void Game_setPlayerDirection(GameState *state, Direction dir)
 {
     if (dir == DIR_NONE || state->result != RESULT_RUNNING) {
@@ -1404,6 +1454,7 @@ void Game_setPlayerDirection(GameState *state, Direction dir)
     setSnakeDirectionWithSlow(&state->player, dir);
 }
 
+/* 设置本地多人模式玩家二蛇的方向 */
 void Game_setP2Direction(GameState *state, Direction dir)
 {
     if (dir == DIR_NONE || state->result != RESULT_RUNNING) {
@@ -1412,6 +1463,7 @@ void Game_setP2Direction(GameState *state, Direction dir)
     setSnakeDirectionWithSlow(&state->ai, dir);
 }
 
+/* 游戏核心更新：计时器管理、事件处理、根据步长推进游戏逻辑 */
 void Game_update(GameState *state, int deltaMs)
 {
     int interval;
@@ -1480,11 +1532,13 @@ void Game_update(GameState *state, int deltaMs)
     }
 }
 
+/* 判断游戏是否已结束 */
 bool Game_isFinished(const GameState *state)
 {
     return state->result != RESULT_RUNNING;
 }
 
+/* 沿射手方向扫描目标蛇身，返回第一个命中段的索引（-1 表示未命中） */
 static int findArrowHitIndex(const GameState *state, int shooterIndex, bool requireHead)
 {
     const Snake *shooter = Game_getSnake(state, shooterIndex);
@@ -1519,6 +1573,7 @@ static int findArrowHitIndex(const GameState *state, int shooterIndex, bool requ
     return -1;
 }
 
+/* 从指定蛇的头部向前发射一支箭矢（消耗弓数量） */
 static bool fireArrow(GameState *state, int shooterIndex)
 {
     Snake *shooter = Game_getMutableSnake(state, shooterIndex);
@@ -1559,6 +1614,7 @@ static bool fireArrow(GameState *state, int shooterIndex)
     return false;
 }
 
+/* 在边界指定位置生成一支无主箭矢（箭雨事件使用） */
 static bool spawnBorderArrow(GameState *state, Pos from, Direction dir)
 {
     int i;
@@ -1586,6 +1642,7 @@ static bool spawnBorderArrow(GameState *state, Pos from, Direction dir)
     return false;
 }
 
+/* 调整速度档 (+1 或 -1)，多人模式下禁用 */
 void Game_adjustSpeed(GameState *state, int delta)
 {
     if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
@@ -1600,26 +1657,31 @@ void Game_adjustSpeed(GameState *state, int delta)
     }
 }
 
+/* 玩家（P1）发射箭矢 */
 bool Game_playerFireArrow(GameState *state)
 {
     return fireArrow(state, PLAYER_INDEX);
 }
 
+/* AI 发射箭矢 */
 bool Game_aiFireArrow(GameState *state)
 {
     return fireArrow(state, AI_INDEX);
 }
 
+/* 玩家二（P2）发射箭矢 */
 bool Game_player2FireArrow(GameState *state)
 {
     return fireArrow(state, P2_INDEX);
 }
 
+/* 检测射手是否有无障碍的直线射中路径 */
 bool Game_hasClearShot(const GameState *state, int shooterIndex, bool requireHead)
 {
     return findArrowHitIndex(state, shooterIndex, requireHead) >= 0;
 }
 
+/* 检测坐标是否在标准化地图范围内 */
 bool Game_isInsideMap(Pos pos, int mapSize)
 {
     mapSize = Game_validMapSize(mapSize);
@@ -1627,11 +1689,13 @@ bool Game_isInsideMap(Pos pos, int mapSize)
     return pos.row >= 0 && pos.row < mapSize && pos.col >= 0 && pos.col < mapSize;
 }
 
+/* 检测坐标是否在当前游戏地图范围内 */
 bool Game_isInside(const GameState *state, Pos pos)
 {
     return Game_isInsideMap(pos, state->config.mapSize);
 }
 
+/* 判断格子类型是否为可食用道具（普通食物或增益食物） */
 bool Game_isFood(CellType cell)
 {
     return cell == CELL_FOOD
@@ -1640,6 +1704,7 @@ bool Game_isFood(CellType cell)
         || cell == CELL_FOOD_SLOW;
 }
 
+/* 判断格子类型是否为战斗专属道具 */
 bool Game_isBattleItem(CellType cell)
 {
     return cell == CELL_BATTLE_BOW
@@ -1648,6 +1713,7 @@ bool Game_isBattleItem(CellType cell)
         || cell == CELL_BATTLE_CLOCK;
 }
 
+/* 判断格子类型是否为危险格（撞上会死亡） */
 bool Game_isDangerCell(CellType cell)
 {
     return cell == CELL_WALL
@@ -1656,6 +1722,7 @@ bool Game_isDangerCell(CellType cell)
         || cell == CELL_BATTLE_SPIKE;
 }
 
+/* 返回道具的基础分数值 */
 int Game_itemScore(CellType cell)
 {
     switch (cell) {
@@ -1679,6 +1746,7 @@ int Game_itemScore(CellType cell)
     }
 }
 
+/* 判断道具是否会导致蛇长度增长 */
 bool Game_itemGrows(CellType cell)
 {
     return cell == CELL_FOOD
@@ -1687,6 +1755,7 @@ bool Game_itemGrows(CellType cell)
         || cell == CELL_FOOD_SLOW;
 }
 
+/* 标准化地图大小：仅接受 20/50/100，其他回落到默认 20 */
 int Game_validMapSize(int mapSize)
 {
     if (mapSize == 50 || mapSize == 100) {
@@ -1696,16 +1765,19 @@ int Game_validMapSize(int mapSize)
     return DEFAULT_MAP_SIZE;
 }
 
+/* 根据索引获取蛇的只读指针（AI_INDEX 返回 ai，其他返回 player） */
 const Snake *Game_getSnake(const GameState *state, int snakeIndex)
 {
     return snakeIndex == AI_INDEX ? &state->ai : &state->player;
 }
 
+/* 根据索引获取蛇的可写指针 */
 Snake *Game_getMutableSnake(GameState *state, int snakeIndex)
 {
     return snakeIndex == AI_INDEX ? &state->ai : &state->player;
 }
 
+/* 检查指定位置是否被某蛇身占据（可忽略尾部） */
 bool Game_snakeContains(const Snake *snake, Pos pos, bool ignoreTail)
 {
     int i;
@@ -1729,6 +1801,7 @@ bool Game_snakeContains(const Snake *snake, Pos pos, bool ignoreTail)
     return false;
 }
 
+/* 检查指定位置是否被任一蛇占据（可忽略指定蛇） */
 bool Game_cellHasSnake(const GameState *state, Pos pos, int ignoreSnakeIndex, bool ignoreTail)
 {
     if (ignoreSnakeIndex != PLAYER_INDEX
@@ -1743,6 +1816,7 @@ bool Game_cellHasSnake(const GameState *state, Pos pos, int ignoreSnakeIndex, bo
     return false;
 }
 
+/* 统计地图上所有食物（普通+增益）的总数 */
 int Game_countFoodCells(const GameState *state)
 {
     int mapSize = mapSizeOf(state);
@@ -1761,6 +1835,7 @@ int Game_countFoodCells(const GameState *state)
     return count;
 }
 
+/* 将音效事件推入队列，供 UI 层消费播放 */
 void Game_pushSoundEvent(GameState *state, SoundEvent event)
 {
     if (event == SOUND_NONE || state->soundEventCount >= MAX_SOUND_EVENTS) {
@@ -1770,6 +1845,7 @@ void Game_pushSoundEvent(GameState *state, SoundEvent event)
     state->soundEvents[state->soundEventCount++] = event;
 }
 
+/* 消费所有待播放的音效事件，清空队列并返回事件数 */
 int Game_consumeSoundEvents(GameState *state, SoundEvent outEvents[], int maxCount)
 {
     int i;
@@ -1787,36 +1863,43 @@ int Game_consumeSoundEvents(GameState *state, SoundEvent outEvents[], int maxCou
     return count;
 }
 
+/* 检测位置是否处于当前活跃的轰炸区中 */
 bool Game_isInBombZone(const GameState *state, Pos pos)
 {
     return isInBombZone(&state->event, pos);
 }
 
+/* 返回炸弹当前是否处于引爆状态 */
 bool Game_isBombActive(const GameState *state)
 {
     return state->event.bombActive;
 }
 
+/* 返回箭雨边界是否正在闪烁 */
 bool Game_isBorderFlashing(const GameState *state)
 {
     return state->event.borderFlashing;
 }
 
+/* 获取边界发射源数量（箭雨事件） */
 int Game_getBorderSourceCount(const GameState *state)
 {
     return state->event.borderSourceCount;
 }
 
+/* 获取边界发射源数组只读指针 */
 const BorderSource *Game_getBorderSources(const GameState *state)
 {
     return state->event.borderSources;
 }
 
+/* 获取当前活跃的随机事件类型 */
 RandomEventType Game_getActiveEvent(const GameState *state)
 {
     return state->event.activeEvent;
 }
 
+/* 判断是否应启用粒子特效（根据性能自动调整） */
 bool Game_isUsingParticles(void)
 {
     return gUseParticles;
