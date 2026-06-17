@@ -867,21 +867,19 @@ bool Ui_runGame(InputContext *input, RenderContext *render, GameState *state)
                 }
             }
 
-            /* 手柄 */
+            /* 手柄 — 十字键 */
             {
-                Direction gpadDir = Input_gamepadConnected(0)
-                    ? Input_gamepadDirection(0) : DIR_NONE;
-                if (gpadDir == DIR_LEFT) selectedAction = wrapIndex(selectedAction - 1, 2);
-                if (gpadDir == DIR_RIGHT) selectedAction = wrapIndex(selectedAction + 1, 2);
-                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
-                    if (selectedAction == 0) {
-                        Game_init(state, &config);
-                        break;
-                    } else {
-                        return true;
+                if (Input_gamepadConnected(0)) {
+                    if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_LEFT))
+                        selectedAction = wrapIndex(selectedAction - 1, 2);
+                    if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_RIGHT))
+                        selectedAction = wrapIndex(selectedAction + 1, 2);
+                    if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
+                        if (selectedAction == 0) { Game_init(state, &state->config); break; }
+                        else { return true; }
                     }
+                    if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return true;
                 }
-                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return true;
             }
 
             Sleep(16);

@@ -1339,6 +1339,23 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     int cellSize = Render_cellSizeForMap(render, mapSize);
     int visibleCells = visibleCellsForMap(render, mapSize, cellSize);
     int boardSize = boardSizeForMap(render, mapSize);
+
+    /* 多人模式：用全窗口宽度，地图居中无侧栏 */
+    if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
+        int fullW = render->windowWidth - 48;
+        int fullH = render->windowHeight - BOARD_TOP - 24;
+        int origBoard = boardSize;
+        boardSize = minInt(fullW, fullH);
+        if (boardSize < 320) boardSize = 320;
+        /* 重新计算格子和视口 */
+        cellSize = boardSize / mapSize;
+        if (mapSize >= 50 && cellSize < 18) cellSize = 18;
+        if (cellSize < 1) cellSize = 1;
+        visibleCells = boardSize / cellSize;
+        if (visibleCells > mapSize) visibleCells = mapSize;
+        if (visibleCells < 1) visibleCells = 1;
+        x = BOARD_LEFT + boardSize + 24; /* panelLeft 重新计算 */
+    }
     Pos focus = state->player.length > 0 ? state->player.body[0] : state->ai.body[0];
     int startRow = clampViewportStart(focus.row, visibleCells, mapSize);
     int startCol = clampViewportStart(focus.col, visibleCells, mapSize);
