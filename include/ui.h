@@ -24,6 +24,7 @@ bool Ui_runSettings(InputContext *input, RenderContext *render, GameConfig *sett
 bool Ui_chooseMapSize(InputContext *input, RenderContext *render, int *mapSize, bool isMulti);
 bool Ui_chooseControls(InputContext *input, RenderContext *render, GameConfig *config);
 bool Ui_chooseControlsSingle(InputContext *input, RenderContext *render, GameConfig *config);
+bool Ui_chooseControlsP2(InputContext *input, RenderContext *render, GameConfig *config);
 bool Ui_runGame(InputContext *input, RenderContext *render, GameState *state);
 
 #endif

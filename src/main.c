@@ -80,11 +80,28 @@ int main(void)
             } else if (action == MENU_MULTIPLAYER) {
                 Game_applyModeDefaults(&config, MODE_LOCAL_MULTIPLAYER);
                 config.variant = VARIANT_DIVERSE;
+
+                /* P1 选择操控方式 */
                 config.p1ControlMethod = CONTROL_KEYBOARD_WASD;
-                config.p2ControlMethod = CONTROL_KEYBOARD_ARROWS;
-                if (!Ui_chooseControls(&input, &render, &config)) {
+                if (!Ui_chooseControlsSingle(&input, &render, &config)) {
                     continue;
                 }
+
+                /* P2 选择操控方式 */
+                config.p2ControlMethod = CONTROL_KEYBOARD_ARROWS;
+                if (!Ui_chooseControlsP2(&input, &render, &config)) {
+                    continue;
+                }
+
+                /* 地图大小选择 */
+                {
+                    int mapSz = config.mapSize > 50 ? 50 : config.mapSize;
+                    if (!Ui_chooseMapSize(&input, &render, &mapSz, true)) {
+                        continue;
+                    }
+                    config.mapSize = mapSz;
+                }
+
                 Render_loadSkin(&render, skinId);
                 Game_init(state, &config);
                 Ui_runGame(&input, &render, state);

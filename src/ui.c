@@ -83,17 +83,18 @@ MenuAction Ui_runWelcome(InputContext *input, RenderContext *render)
             if (Input_mouseLeftClicked()) return (MenuAction)selected;
         }
 
-        /* 手柄 */
+        /* 手柄 — 十字键导航 */
         {
-            Direction gpadDir = Input_gamepadConnected(0)
-                ? Input_gamepadDirection(0) : DIR_NONE;
-            if (gpadDir == DIR_UP) selected = wrapIndex(selected - 1, 7);
-            if (gpadDir == DIR_DOWN) selected = wrapIndex(selected + 1, 7);
-            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)
-                || Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_START)) {
-                return (MenuAction)selected;
+            if (Input_gamepadConnected(0)) {
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_UP))
+                    selected = wrapIndex(selected - 1, 7);
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_DOWN))
+                    selected = wrapIndex(selected + 1, 7);
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)
+                    || Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_START))
+                    return (MenuAction)selected;
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return MENU_EXIT;
             }
-            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return MENU_EXIT;
         }
 
         Sleep(16);
@@ -141,17 +142,17 @@ bool Ui_chooseVariant(InputContext *input, RenderContext *render, MapVariant *va
             }
         }
 
-        /* 手柄 */
+        /* 手柄 — 十字键左右 */
         {
-            Direction gpadDir = Input_gamepadConnected(0)
-                ? Input_gamepadDirection(0) : DIR_NONE;
-            if (gpadDir == DIR_LEFT) selected = wrapIndex(selected - 1, 2);
-            if (gpadDir == DIR_RIGHT) selected = wrapIndex(selected + 1, 2);
-            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
-                *variant = (MapVariant)selected;
-                return true;
+            if (Input_gamepadConnected(0)) {
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_LEFT))
+                    selected = wrapIndex(selected - 1, 2);
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_RIGHT))
+                    selected = wrapIndex(selected + 1, 2);
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A))
+                    { *variant = (MapVariant)selected; return true; }
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
             }
-            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
         }
 
         Sleep(16);
@@ -225,12 +226,14 @@ bool Ui_chooseMapSize(InputContext *input, RenderContext *render, int *mapSize, 
             if (Input_mouseLeftClicked()) { *mapSize = (sel == 0) ? 20 : (sel == 1) ? 50 : 100; return true; }
         }
 
-        /* 手柄 */
+        /* 手柄 — 十字键 */
         if (Input_gamepadConnected(0)) {
-            Direction d = Input_gamepadDirection(0);
-            if (d == DIR_UP) sel = wrapIndex(sel - 1, maxOpt);
-            if (d == DIR_DOWN) sel = wrapIndex(sel + 1, maxOpt);
-            if (Input_gamepadButtonPressed(0, 0x1000)) { *mapSize = (sel == 0) ? 20 : (sel == 1) ? 50 : 100; return true; }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_UP))
+                sel = wrapIndex(sel - 1, maxOpt);
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_DOWN))
+                sel = wrapIndex(sel + 1, maxOpt);
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A))
+                { *mapSize = (sel == 0) ? 20 : (sel == 1) ? 50 : 100; return true; }
         }
         Sleep(16);
     }
@@ -272,12 +275,67 @@ bool Ui_chooseControlsSingle(InputContext *input, RenderContext *render, GameCon
 
         /* 游戏手柄 */
         {
-            Direction gpadDir = Input_gamepadConnected(0)
-                ? Input_gamepadDirection(0) : DIR_NONE;
-            if (gpadDir == DIR_UP) sel = (sel - 1 + 5) % 5;
-            if (gpadDir == DIR_DOWN) sel = (sel + 1) % 5;
+            if (Input_gamepadConnected(0)) {
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_UP))
+                    sel = (sel - 1 + 5) % 5;
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_DOWN))
+                    sel = (sel + 1) % 5;
+            }
             if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
                 config->p1ControlMethod = (ControlMethod)sel;
+                return true;
+            }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
+        }
+
+        Sleep(16);
+    }
+}
+
+/* 玩家二操控方式选择：键盘 WASD/方向键/鼠标/手柄1/手柄2 */
+bool Ui_chooseControlsP2(InputContext *input, RenderContext *render, GameConfig *config)
+{
+    int sel = (int)config->p2ControlMethod;
+
+    for (;;) {
+        MenuInput menu;
+
+        Input_updateMouse();
+        Input_updateGamepads();
+
+        Render_drawControlSelectP2(render, sel);
+
+        /* 键盘 */
+        Input_readMenu(input, &menu);
+        if (menu.move != 0) sel = (sel + menu.move + 5) % 5;
+        if (menu.confirm) { config->p2ControlMethod = (ControlMethod)sel; return true; }
+        if (menu.cancel) return false;
+
+        /* 鼠标 hover */
+        {
+            int colX = (render->windowWidth - 210) / 2;
+            for (int i = 0; i < 5; i++) {
+                int y = 195 + i * 52;
+                if (Input_mouseInRect(colX, y, colX + 210, y + 42)) {
+                    sel = i;
+                }
+            }
+            if (Input_mouseLeftClicked()) {
+                config->p2ControlMethod = (ControlMethod)sel;
+                return true;
+            }
+        }
+
+        /* 游戏手柄 */
+        {
+            if (Input_gamepadConnected(0)) {
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_UP))
+                    sel = (sel - 1 + 5) % 5;
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_DOWN))
+                    sel = (sel + 1) % 5;
+            }
+            if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
+                config->p2ControlMethod = (ControlMethod)sel;
                 return true;
             }
             if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_B)) return false;
@@ -330,10 +388,12 @@ bool Ui_chooseDifficulty(InputContext *input, RenderContext *render, AiDifficult
 
         /* 手柄 */
         {
-            Direction gpadDir = Input_gamepadConnected(0)
-                ? Input_gamepadDirection(0) : DIR_NONE;
-            if (gpadDir == DIR_LEFT) selected = wrapIndex(selected - 1, 3);
-            if (gpadDir == DIR_RIGHT) selected = wrapIndex(selected + 1, 3);
+            if (Input_gamepadConnected(0)) {
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_LEFT))
+                    selected = wrapIndex(selected - 1, 3);
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_RIGHT))
+                    selected = wrapIndex(selected + 1, 3);
+            }
             if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
                 *difficulty = (AiDifficulty)selected;
                 return true;
@@ -392,10 +452,12 @@ bool Ui_chooseSkin(InputContext *input, RenderContext *render, int *skinId)
 
         /* 手柄 */
         {
-            Direction gpadDir = Input_gamepadConnected(0)
-                ? Input_gamepadDirection(0) : DIR_NONE;
-            if (gpadDir == DIR_UP) selected = wrapIndex(selected - 1, count);
-            if (gpadDir == DIR_DOWN) selected = wrapIndex(selected + 1, count);
+            if (Input_gamepadConnected(0)) {
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_UP))
+                    selected = wrapIndex(selected - 1, count);
+                if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_DPAD_DOWN))
+                    selected = wrapIndex(selected + 1, count);
+            }
             if (Input_gamepadButtonPressed(0, XINPUT_GAMEPAD_A)) {
                 *skinId = selected;
                 Render_loadSkin(render, selected);
@@ -602,6 +664,7 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
     bool waitingForStart = true;
     DWORD lastTick = GetTickCount();
     bool isMulti = (state->config.mode == MODE_LOCAL_MULTIPLAYER);
+    static int countdownMs = 0;
 
     while (!Game_isFinished(state)) {
         DWORD now = GetTickCount();
@@ -622,52 +685,66 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
             dir2 = DIR_NONE;
         }
         if (waitingForStart) {
-            bool p1Started = false;
-            bool p2Started = false;
+            bool p1Ready = false;
+            bool p2Ready = false;
 
             /* P1 开始条件 */
             if (state->config.p1ControlMethod == CONTROL_KEYBOARD_WASD
                 || state->config.p1ControlMethod == CONTROL_KEYBOARD_ARROWS) {
-                if (dir != DIR_NONE) p1Started = true;
+                if (dir != DIR_NONE) p1Ready = true;
             }
             if (state->config.p1ControlMethod == CONTROL_MOUSE) {
-                if (Input_mouseLeftClicked()) p1Started = true;
+                if (Input_mouseLeftClicked()) p1Ready = true;
             }
             if (state->config.p1ControlMethod >= CONTROL_GAMEPAD_1) {
                 int slot = (int)(state->config.p1ControlMethod - CONTROL_GAMEPAD_1);
                 if (Input_gamepadButtonPressed(slot, XINPUT_GAMEPAD_RIGHT_SHOULDER)
                     || Input_gamepadDirection(slot) != DIR_NONE) {
-                    p1Started = true;
+                    p1Ready = true;
                 }
             }
 
-            /* P2 开始条件 */
             if (isMulti) {
+                /* P2 开始条件 */
                 if (state->config.p2ControlMethod == CONTROL_KEYBOARD_WASD
                     || state->config.p2ControlMethod == CONTROL_KEYBOARD_ARROWS) {
-                    if (dir2 != DIR_NONE) p2Started = true;
+                    if (dir2 != DIR_NONE) p2Ready = true;
                 }
                 if (state->config.p2ControlMethod == CONTROL_MOUSE) {
-                    if (Input_mouseLeftClicked()) p2Started = true;
+                    if (Input_mouseLeftClicked()) p2Ready = true;
                 }
                 if (state->config.p2ControlMethod >= CONTROL_GAMEPAD_1) {
                     int slot = (int)(state->config.p2ControlMethod - CONTROL_GAMEPAD_1);
                     if (Input_gamepadButtonPressed(slot, XINPUT_GAMEPAD_RIGHT_SHOULDER)
                         || Input_gamepadDirection(slot) != DIR_NONE) {
-                        p2Started = true;
+                        p2Ready = true;
                     }
                 }
-            }
 
-            bool started = isMulti ? (p1Started && p2Started) : p1Started;
+                if (p1Ready && p2Ready && countdownMs == 0) {
+                    countdownMs = 3000; /* 启动 3 秒倒计时 */
+                }
 
-            if (started) {
-                waitingForStart = false;
-                Game_preparePlayerStart(state, dir != DIR_NONE ? dir : DIR_RIGHT);
-                if (isMulti) Game_prepareP2Start(state, dir2 != DIR_NONE ? dir2 : DIR_LEFT);
-                Game_setPlayerDirection(state, dir != DIR_NONE ? dir : DIR_RIGHT);
-                if (isMulti) Game_setP2Direction(state, dir2 != DIR_NONE ? dir2 : DIR_LEFT);
-                Audio_playEvent(SOUND_START);
+                if (countdownMs > 0) {
+                    countdownMs -= deltaMs;
+                    if (countdownMs <= 0) {
+                        countdownMs = 0;
+                        waitingForStart = false;
+                        Game_preparePlayerStart(state, dir != DIR_NONE ? dir : DIR_RIGHT);
+                        Game_prepareP2Start(state, dir2 != DIR_NONE ? dir2 : DIR_LEFT);
+                        Game_setPlayerDirection(state, dir != DIR_NONE ? dir : DIR_RIGHT);
+                        Game_setP2Direction(state, dir2 != DIR_NONE ? dir2 : DIR_LEFT);
+                        Audio_playEvent(SOUND_START);
+                    }
+                }
+            } else {
+                /* 单人模式：立即开始 */
+                if (p1Ready) {
+                    waitingForStart = false;
+                    Game_preparePlayerStart(state, dir != DIR_NONE ? dir : DIR_RIGHT);
+                    Game_setPlayerDirection(state, dir != DIR_NONE ? dir : DIR_RIGHT);
+                    Audio_playEvent(SOUND_START);
+                }
             }
         } else {
             Game_setPlayerDirection(state, dir);
@@ -731,7 +808,7 @@ static bool runOneRound(InputContext *input, RenderContext *render, GameState *s
         }
 
         Render_particlesUpdate(deltaMs);
-        Render_drawGame(render, state, paused, waitingForStart);
+        Render_drawGame(render, state, paused, waitingForStart, countdownMs);
         Sleep(10);
     }
 

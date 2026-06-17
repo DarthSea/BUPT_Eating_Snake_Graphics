@@ -61,10 +61,11 @@ void Render_drawDifficultyMenu(AiDifficulty selected);
 void Render_drawSkinMenu(int selectedSkin);
 void Render_drawSettings(const GameConfig *config, int selectedRow);
 void Render_drawGame(RenderContext *render, const GameState *state,
-    bool paused, bool waitingForStart);
+    bool paused, bool waitingForStart, int countdownMs);
 void Render_drawGameOver(const GameState *state, int selectedAction);
 void Render_drawControlSelect(RenderContext *render, int p1Sel, int p2Sel, const GameConfig *config);
 void Render_drawControlSelectSingle(RenderContext *render, int selected);
+void Render_drawControlSelectP2(RenderContext *render, int selected);
 int Render_cellSizeForMap(const RenderContext *render, int mapSize);
 
 /* Particle system */

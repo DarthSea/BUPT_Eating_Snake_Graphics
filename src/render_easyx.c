@@ -1333,7 +1333,7 @@ void Render_drawSettings(const GameConfig *config, int selectedRow)
 
 /* 绘制游戏主画面：棋盘背景/道具/蛇/箭矢/HUD 侧栏/事件特效/提示覆盖 */
 void Render_drawGame(RenderContext *render, const GameState *state,
-    bool paused, bool waitingForStart)
+    bool paused, bool waitingForStart, int countdownMs)
 {
     int mapSize = Game_validMapSize(state->config.mapSize);
     int cellSize = Render_cellSizeForMap(render, mapSize);
@@ -1921,17 +1921,27 @@ void Render_drawGame(RenderContext *render, const GameState *state,
     } /* end else (非多人模式侧栏) */
 
     if (waitingForStart) {
-        const TCHAR *text;
-        if (state->config.mode == MODE_LOCAL_MULTIPLAYER) {
-            text = _T("双方按各自操控方式开始");
-        } else if (state->config.p1ControlMethod == CONTROL_MOUSE) {
-            text = _T("点击鼠标左键开始");
-        } else if (state->config.p1ControlMethod >= CONTROL_GAMEPAD_1) {
-            text = _T("按手柄 RB 或移动摇杆开始");
+        bool isMulti = (state->config.mode == MODE_LOCAL_MULTIPLAYER);
+        if (isMulti && countdownMs > 0) {
+            int sec = (countdownMs + 999) / 1000;
+            TCHAR cd[8];
+            _stprintf_s(cd, 8, _T("%d"), sec);
+            drawCenteredText(BOARD_LEFT, BOARD_TOP, BOARD_LEFT + boardSize, BOARD_TOP + boardSize,
+                cd, (int)(72 * hudScale), COLOR_SCORE);
+        } else if (isMulti) {
+            drawTextAt(BOARD_LEFT + 8, BOARD_TOP + 8,
+                _T("双方按下操控键开始"), 18, COLOR_SCORE);
         } else {
-            text = _T("按方向键开始");
+            const TCHAR *text;
+            if (state->config.p1ControlMethod == CONTROL_MOUSE) {
+                text = _T("点击鼠标左键开始");
+            } else if (state->config.p1ControlMethod >= CONTROL_GAMEPAD_1) {
+                text = _T("按手柄 RB 或移动摇杆开始");
+            } else {
+                text = _T("按方向键开始");
+            }
+            drawTextAt(BOARD_LEFT + 8, BOARD_TOP + 8, text, 18, COLOR_SCORE);
         }
-        drawTextAt(BOARD_LEFT + 8, BOARD_TOP + 8, text, 18, COLOR_SCORE);
     }
 
     if (paused) {
@@ -2087,6 +2097,49 @@ void Render_drawControlSelectSingle(RenderContext *render, int selected)
     setfillcolor(COLOR_BG);
     solidrectangle(0, 0, gWindowWidth, gWindowHeight);
     drawCenteredText(0, 48, gWindowWidth, 100, _T("选择操控方式"), 38, COLOR_TEXT);
+    drawCenteredText(0, 110, gWindowWidth, 140,
+        _T("W/S/方向键 选择，Enter 确认，Esc 返回"), 18, COLOR_TEXT_DIM);
+
+    for (i = 0; i < 5; i++) {
+        int x = colX;
+        int y = 195 + i * 52;
+        int w = 210;
+        int h = 42;
+        bool sel = (i == selected);
+
+        drawRoundedRect(x, y, x + w, y + h, 8,
+            sel ? COLOR_CARD_HOVER : COLOR_CARD,
+            sel ? COLOR_ACCENT : COLOR_BORDER);
+        if (sel) {
+            setfillcolor(COLOR_ACCENT);
+            solidrectangle(x, y, x + 3, y + h);
+        }
+        drawCenteredText(x, y, x + w, y + h, CONTROL_NAMES[i], 20,
+            sel ? COLOR_ACCENT : COLOR_TEXT);
+    }
+
+    FlushBatchDraw();
+}
+
+/* 绘制玩家二操控方式选择界面（居中单列五个操控选项） */
+void Render_drawControlSelectP2(RenderContext *render, int selected)
+{
+    static const TCHAR *CONTROL_NAMES[] = {
+        _T("键盘 WASD"),
+        _T("键盘 方向键"),
+        _T("鼠标"),
+        _T("手柄 1"),
+        _T("手柄 2")
+    };
+    int i;
+    int colX = (gWindowWidth - 210) / 2;
+
+    (void)render;
+
+    cleardevice();
+    setfillcolor(COLOR_BG);
+    solidrectangle(0, 0, gWindowWidth, gWindowHeight);
+    drawCenteredText(0, 48, gWindowWidth, 100, _T("玩家二 选择操控方式"), 38, COLOR_TEXT);
     drawCenteredText(0, 110, gWindowWidth, 140,
         _T("W/S/方向键 选择，Enter 确认，Esc 返回"), 18, COLOR_TEXT_DIM);
 
